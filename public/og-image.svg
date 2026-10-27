@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e293b"/>
+      <stop offset="100%" style="stop-color:#0f172a"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <!-- Accent bar -->
+  <rect x="0" y="0" width="8" height="630" fill="#3b82f6"/>
+  <!-- Main heading -->
+  <text x="80" y="260" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="700" fill="#f8fafc">Company Rankings</text>
+  <!-- Sub-heading -->
+  <text x="80" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="400" fill="#94a3b8">SEO-optimised funding intelligence</text>
+  <!-- Domain -->
+  <text x="80" y="540" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="400" fill="#3b82f6">seo-blog-generator-772.pages.dev</text>
+</svg>

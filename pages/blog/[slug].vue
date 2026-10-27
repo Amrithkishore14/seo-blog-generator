@@ -39,6 +39,8 @@ const canonicalUrl = `${config.public.siteUrl}/blog/${route.params.slug}`
 
 // ── SEO meta ─────────────────────────────────────────────────────────────────
 
+const ogImageUrl = `${config.public.siteUrl}/og-image.svg`
+
 useSeoMeta({
   title: blog.value.copy.title,
   description: blog.value.copy.metaDescription,
@@ -46,11 +48,11 @@ useSeoMeta({
   ogDescription: blog.value.copy.metaDescription,
   ogType: 'article',
   ogUrl: canonicalUrl,
-  // twitter:card 'summary' — no hero image is generated, so 'summary_large_image'
-  // would show a broken placeholder in social share previews.
-  twitterCard: 'summary',
+  ogImage: ogImageUrl,
+  twitterCard: 'summary_large_image',
   twitterTitle: blog.value.copy.title,
   twitterDescription: blog.value.copy.metaDescription,
+  twitterImage: ogImageUrl,
 })
 
 // ── JSON-LD schemas ────────────────────────────────────────────────────────────
