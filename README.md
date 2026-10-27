@@ -113,6 +113,7 @@ curl -X POST http://localhost:3000/api/generate \
 | **@nuxtjs/sitemap** | Auto-generates `/sitemap.xml` from a dynamic URL source |
 | **Vitest** | Fast unit test runner; runs pure TS files directly without Nuxt context |
 | **tsx** | Runs the seed script as TypeScript without a separate compile step |
+| **Claude Code** | AI coding assistant (by Anthropic) used throughout development — generating, debugging, and iterating on all code in this repository |
 
 ---
 
