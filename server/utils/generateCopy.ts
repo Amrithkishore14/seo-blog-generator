@@ -6,8 +6,10 @@
  * Design principles:
  *   1. The LLM receives only pre-computed stats — it cannot invent numbers.
  *   2. The response is validated with Zod; one retry is attempted on bad JSON.
- *   3. If the LLM fails for any reason, a deterministic fallback generates copy
- *      from templates so the demo never breaks.
+ *   3. If both attempts fail only on title/meta length, the AI body copy is
+ *      preserved and the fallback title/meta is substituted — never truncated.
+ *   4. Full fallback (template copy) is only used when the LLM is unavailable
+ *      or returns structurally invalid JSON.
  *
  * No Nuxt/Nitro imports here — this file is also used by scripts/seed.ts.
  */
@@ -17,14 +19,27 @@ import { z } from 'zod'
 import type { DatasetStats } from './analyseDataset'
 import { formatMoney, slugify } from './analyseDataset'
 
+// ── String helpers ────────────────────────────────────────────────────────────
+
 /** Title-case a string: "fintech" → "Fintech", "AI healthcare" → "AI Healthcare" */
 function titleCase(s: string): string {
   return s.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1))
 }
 
+/**
+ * Lower-case a metric label for use in mid-sentence prose while preserving
+ * acronyms (all-uppercase tokens).
+ *
+ * "Total Raised"     → "total raised"
+ * "Funding (USD)"    → "funding (USD)"    ← USD preserved
+ * "Revenue (GBP)"    → "revenue (GBP)"    ← GBP preserved
+ */
+function labelForSentence(label: string): string {
+  return label.replace(/\b([A-Za-z][a-z]*)\b/g, (m) => m.toLowerCase())
+}
+
 // ── Zod schema for the LLM JSON response ────────────────────────────────────
-// Limits match SEO best-practice ceilings so we catch over-length AI output
-// before it reaches users (title ≤ 60 chars, meta ≤ 155 chars).
+// Limits match SEO best-practice ceilings.
 const CopySchema = z.object({
   title: z.string().min(1).max(60), // <title> tag — keep under 60 for SERP
   metaDescription: z.string().min(1).max(155), // <meta description> — keep under 155
@@ -69,27 +84,48 @@ export interface GenerateCopyOptions {
 
 /**
  * Generate SEO blog copy using an LLM.
- * One retry is attempted before falling back to the deterministic template.
+ *
+ * Retry strategy:
+ *   Attempt 1 — standard prompt.
+ *   Attempt 2 — retry prompt that explicitly reminds the model to keep
+ *               title ≤60 and metaDescription ≤120 chars.
+ *   Salvage   — if both attempts produce valid AI JSON but with an
+ *               over-length title/meta, substitute fallback values for
+ *               those two fields and return the rest of the AI copy.
+ *   Fallback  — deterministic template copy when the LLM is unavailable
+ *               or returns structurally invalid JSON.
  */
 export async function generateCopy(
   opts: GenerateCopyOptions,
 ): Promise<{ copy: GeneratedCopy; usedFallback: boolean }> {
-  const prompt = buildPrompt(opts)
-
-  // Skip the LLM entirely if no key is configured and provider is gemini
   const provider = opts.llmProvider ?? 'gemini'
   const hasKey = provider === 'ollama' || Boolean(opts.geminiApiKey)
 
   if (hasKey) {
+    let lastRaw: string | null = null
+
     for (let attempt = 1; attempt <= 2; attempt++) {
+      const prompt = buildPrompt(opts, attempt === 2)
       try {
         const raw = await callLlm(prompt, opts)
+        lastRaw = raw
         const copy = parseAndValidate(raw)
         if (copy) return { copy, usedFallback: false }
-        console.warn(`[generateCopy] Attempt ${attempt}: Zod validation failed — retrying`)
+        console.warn(`[generateCopy] Attempt ${attempt}: Zod validation failed`)
       } catch (err) {
         console.warn(`[generateCopy] Attempt ${attempt}: LLM call failed:`, err)
         if (attempt === 2) break
+      }
+    }
+
+    // Both attempts failed. Try salvaging: substitute fallback title/meta into
+    // the AI JSON so the body copy is still AI-generated.
+    if (lastRaw) {
+      const fb = buildFallbackCopy(opts)
+      const salvaged = parseAndValidateSalvage(lastRaw, fb.title, fb.metaDescription)
+      if (salvaged) {
+        console.warn('[generateCopy] Substituted fallback title/meta; body copy is AI-generated')
+        return { copy: salvaged, usedFallback: false }
       }
     }
   } else {
@@ -103,25 +139,19 @@ export async function generateCopy(
 
 async function callLlm(prompt: string, opts: GenerateCopyOptions): Promise<string> {
   const provider = opts.llmProvider ?? 'gemini'
-
-  if (provider === 'ollama') {
-    return callOllama(prompt, opts.ollamaUrl, opts.ollamaModel)
-  }
+  if (provider === 'ollama') return callOllama(prompt, opts.ollamaUrl, opts.ollamaModel)
   return callGemini(prompt, opts.geminiApiKey!)
 }
 
 /** Call Google Gemini REST API via the official SDK. */
 async function callGemini(prompt: string, apiKey: string): Promise<string> {
   const genAI = new GoogleGenerativeAI(apiKey)
-  // gemini-2.0-flash is the current free-tier fast model
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
     generationConfig: {
-      // Force the model to output JSON — reduces malformed responses
       responseMimeType: 'application/json',
     },
   })
-
   const result = await model.generateContent(prompt)
   return result.response.text()
 }
@@ -135,18 +165,9 @@ async function callOllama(
   const res = await fetch(`${baseUrl}/api/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model,
-      prompt,
-      stream: false,
-      format: 'json', // Ollama JSON mode
-    }),
+    body: JSON.stringify({ model, prompt, stream: false, format: 'json' }),
   })
-
-  if (!res.ok) {
-    throw new Error(`Ollama returned HTTP ${res.status}`)
-  }
-
+  if (!res.ok) throw new Error(`Ollama returned HTTP ${res.status}`)
   const data = (await res.json()) as { response?: string }
   if (!data.response) throw new Error('Ollama returned empty response')
   return data.response
@@ -154,76 +175,68 @@ async function callOllama(
 
 // ── JSON parsing + Zod validation ────────────────────────────────────────────
 
-/**
- * Parse the LLM's text output as JSON, apply field-level sanitisation, then
- * validate against CopySchema. Returns null only on hard failures.
- *
- * Why sanitise before validating?
- *   Models consistently return metaDescriptions that are 1-10 chars over the
- *   155-char SEO limit despite the explicit instruction. Rather than retrying
- *   (or falling back entirely) for a trivially fixable overshoot, we trim at
- *   the last word boundary and preserve the AI copy.
- */
-function parseAndValidate(raw: string): GeneratedCopy | null {
-  // Strip markdown code fences that some models add despite being told not to
+/** Strip markdown fences and parse JSON. Returns null on parse failure. */
+function tryParseJson(raw: string): Record<string, unknown> | null {
   const cleaned = raw
     .replace(/^```(?:json)?\n?/m, '')
     .replace(/\n?```$/m, '')
     .trim()
-
-  let parsed: unknown
   try {
-    parsed = JSON.parse(cleaned)
+    return JSON.parse(cleaned) as Record<string, unknown>
   } catch {
     console.warn('[generateCopy] Failed to parse LLM output as JSON')
     return null
   }
+}
 
-  // Sanitise known fixable overruns before schema validation
-  if (parsed !== null && typeof parsed === 'object') {
-    const obj = parsed as Record<string, unknown>
-    // Trim title to 60 chars at word boundary
-    if (typeof obj.title === 'string' && obj.title.length > 60) {
-      obj.title = obj.title.slice(0, 57).replace(/\s+\S*$/, '') + '…'
-    }
-    // Trim metaDescription to 155 chars at word boundary
-    if (typeof obj.metaDescription === 'string' && obj.metaDescription.length > 155) {
-      obj.metaDescription = obj.metaDescription.slice(0, 152).replace(/\s+\S*$/, '') + '…'
-    }
-  }
-
-  const result = CopySchema.safeParse(parsed)
+/**
+ * Parse and validate the LLM response against CopySchema.
+ * No auto-correction: if title or metaDescription are over-length the model
+ * must retry rather than receiving a silently truncated result.
+ */
+function parseAndValidate(raw: string): GeneratedCopy | null {
+  const obj = tryParseJson(raw)
+  if (!obj) return null
+  const result = CopySchema.safeParse(obj)
   if (result.success) return result.data
-
   console.warn('[generateCopy] Zod validation failed:', result.error.flatten())
+  return null
+}
+
+/**
+ * Salvage AI JSON by substituting the fallback title and metaDescription.
+ * Used when both LLM attempts produce valid body copy but over-length head fields.
+ * The rest of the AI copy (intro, sections, insights, FAQ, keywords) is preserved.
+ */
+function parseAndValidateSalvage(
+  raw: string,
+  fallbackTitle: string,
+  fallbackMeta: string,
+): GeneratedCopy | null {
+  const obj = tryParseJson(raw)
+  if (!obj) return null
+  // Substitute only the length-constrained fields
+  obj.title = fallbackTitle
+  obj.metaDescription = fallbackMeta
+  const result = CopySchema.safeParse(obj)
+  if (result.success) return result.data
+  console.warn('[generateCopy] Salvage validation failed:', result.error.flatten())
   return null
 }
 
 // ── Dataset trait helpers ─────────────────────────────────────────────────────
 
-/**
- * Extract a stage value from datasetTraits, e.g. "Stage: Seed" → "seed".
- * Returns an empty string if no stage trait is found.
- */
 function stageValue(traits: string[]): string {
   const stageTrait = traits.find((t) => t.toLowerCase().startsWith('stage:'))
   if (!stageTrait) return ''
   return stageTrait.split(':')[1]?.trim().toLowerCase() ?? ''
 }
 
-/**
- * A display label for keywords/titles, e.g. "seed-stage".
- * Returns empty string when no stage trait is present.
- */
 function stageLabel(traits: string[]): string {
   const val = stageValue(traits)
   return val ? `${val}-stage` : ''
 }
 
-/**
- * Build a stage qualifier for prose, e.g. " at seed stage" or "" if unknown.
- * Lowercase and without "the" — reads naturally: "companies at seed stage".
- */
 function stageQualifier(traits: string[]): string {
   const val = stageValue(traits)
   return val ? ` at ${val} stage` : ''
@@ -234,10 +247,15 @@ function stageQualifier(traits: string[]): string {
 /**
  * Build the prompt sent to the LLM.
  *
- * We pass pre-computed numbers and explicitly tell the model NOT to invent
- * any figures. This is the key accuracy guarantee of the system.
+ * Key design decisions:
+ *  - Pass both compact (£622.3m) AND exact (£622,301,270) figures; instruct the
+ *    model to use compact form in prose and exact form only in FAQ answers.
+ *  - Prohibit temporal/growth language: this is a single-point-in-time snapshot.
+ *  - Prohibit hype words that inflate claims beyond what the data supports.
+ *  - Preserve acronym casing in metric labels (Funding (USD), not funding (usd)).
+ *  - isRetry=true adds an explicit reminder to keep title ≤60 and meta ≤120 chars.
  */
-function buildPrompt(opts: GenerateCopyOptions): string {
+function buildPrompt(opts: GenerateCopyOptions, isRetry = false): string {
   const { stats } = opts
   const industry = titleCase(opts.industry)
 
@@ -265,29 +283,44 @@ function buildPrompt(opts: GenerateCopyOptions): string {
     ? `Dataset traits (constants): ${stats.datasetTraits.join(' | ')}`
     : ''
 
-  // Build dynamic FAQ q3 based on whether we have a stage trait
   const stage = stageLabel(stats.datasetTraits)
   const faqQ3 = stage
     ? `What is the average raise for a ${stage} ${industry} company?`
-    : `What is the average ${stats.metricLabel.toLowerCase()} for a ${industry} company in this dataset?`
+    : `What is the average ${labelForSentence(stats.metricLabel)} for a ${industry} company in this dataset?`
 
-  // Build dynamic keywords — only include "stage" keyword if we know the stage
   const stageKeyword = stage ? `${stage} ${industry}` : ''
   const keywordsInstruction = stageKeyword
     ? `["${industry}", "${industry} funding", "${stageKeyword}", "(4-8 total)"]`
     : `["${industry}", "${industry} funding", "${industry} companies", "(4-8 total)"]`
 
-  return `You are a professional tech-industry content writer. Write SEO blog copy for a ranking of ${industry} companies.
+  // Pass both compact and exact figures so the model uses compact form in prose
+  const fmt = (n: number) =>
+    `${formatMoney(n, stats.metricCurrency, true)} (exact: ${formatMoney(n, stats.metricCurrency)})`
+
+  const retryNote = isRetry
+    ? `RETRY NOTE: Your previous title was over 60 characters or your metaDescription was over 155 characters. Count carefully: title MUST be ≤60 chars; metaDescription MUST be a complete sentence of ≤120 characters.\n\n`
+    : ''
+
+  return `${retryNote}You are a professional tech-industry content writer. Write SEO blog copy for a ranking of ${industry} companies.
 
 CRITICAL RULES:
 - Use ONLY the numbers provided below. Do NOT invent, round, or approximate any figures.
-- Write in UK English (use "whilst", "organise", "analyse" etc.).
+- This data is a single point-in-time snapshot. Do NOT imply growth trends, trajectories,
+  "continued" momentum, or how the sector is evolving over time.
+- Avoid hype words: no "staggering", "robust", "groundbreaking", "remarkable", "booming",
+  "exciting", "significant" (unless quoting a figure), or similar superlatives.
+- Write in a neutral, factual UK English tone (use "whilst", "organise", "analyse" etc.).
+  Let the numbers speak for themselves.
+- In prose, use the compact number format (e.g. £622.3m). In FAQ answers you may use the
+  exact figure.
+- Preserve acronym casing in the metric label "${stats.metricLabel}" exactly as written —
+  never lower-case it to "${labelForSentence(stats.metricLabel)}".
 - Return ONLY valid JSON. No markdown, no code fences, no commentary.
 
 The JSON must match this exact structure:
 {
-  "title": "(max 60 chars, include '${industry}' and a number)",
-  "metaDescription": "(max 155 chars, compelling search-result snippet)",
+  "title": "(max 60 chars — count carefully; include '${industry}' and a number)",
+  "metaDescription": "(complete sentence, max 155 chars — count carefully; no ellipsis)",
   "slug": "(URL-safe slug, e.g. 'top-${slugify(industry)}-companies')",
   "h1": "(page heading — slightly different phrasing from title)",
   "intro": ["paragraph 1 (2-3 sentences)", "paragraph 2 (2-3 sentences)"],
@@ -295,7 +328,7 @@ The JSON must match this exact structure:
     { "heading": "The Biggest Raises", "body": "2-3 sentences using only the provided numbers." },
     { "heading": "Where They're Based", "body": "2-3 sentences." },
     { "heading": "What They're Building", "body": "2-3 sentences on the top sector tags." },
-    { "heading": "Trends to Watch", "body": "2-3 sentences, forward-looking, no invented statistics." }
+    { "heading": "Notable Companies", "body": "2-3 sentences on the top-ranked companies." }
   ],
   "insights": ["one-line insight 1", "...", "(4 to 6 total)"],
   "faq": [
@@ -312,12 +345,12 @@ Industry: ${industry}
 Total companies: ${stats.count}
 ${traitLines}
 
-${stats.metricLabel} — Total: ${formatMoney(stats.metricTotal, stats.metricCurrency)}
-${stats.metricLabel} — Average: ${formatMoney(stats.metricMean, stats.metricCurrency)}
-${stats.metricLabel} — Median: ${formatMoney(stats.metricMedian, stats.metricCurrency)}
-${stats.metricLabel} — Highest: ${formatMoney(stats.metricMax, stats.metricCurrency)} (${stats.topCompany})
+${stats.metricLabel} — Total: ${fmt(stats.metricTotal)}
+${stats.metricLabel} — Average: ${fmt(stats.metricMean)}
+${stats.metricLabel} — Median: ${fmt(stats.metricMedian)}
+${stats.metricLabel} — Highest: ${fmt(stats.metricMax)} (${stats.topCompany})
 Top 10 companies' share of total: ${stats.top10Share.toFixed(1)}%
-Gap between #1 and #2: ${formatMoney(stats.gapTop1Top2, stats.metricCurrency)}
+Gap between #1 and #2: ${fmt(stats.gapTop1Top2)}
 
 Top regions:
 ${regionLines}
@@ -335,12 +368,9 @@ Now output the JSON object:`
 
 /**
  * Template-based copy generator — no AI required.
- * Used when the LLM is unavailable or returns invalid output.
- *
- * All numbers come from the pre-computed stats object, so this output
- * is always accurate even though it's less varied than AI copy.
- * Stage-specific wording (e.g. "Seed-stage") is derived from datasetTraits,
- * not hardcoded — so this works correctly for any dataset.
+ * Used when the LLM is unavailable or returns invalid JSON.
+ * Also used as the source of fallback title/metaDescription when the AI
+ * returns valid body copy but over-length head fields.
  */
 export function buildFallbackCopy(opts: GenerateCopyOptions): GeneratedCopy {
   const { stats } = opts
@@ -358,19 +388,18 @@ export function buildFallbackCopy(opts: GenerateCopyOptions): GeneratedCopy {
 
   const slug = slugify(`top-${stats.count}-${industry}-companies`)
 
-  // Stage qualifier derived from traits (e.g. " at the Seed stage" or "")
   const stageQ = stageQualifier(stats.datasetTraits)
-  const stage = stageLabel(stats.datasetTraits) // e.g. "Seed-stage" or ""
+  const stage = stageLabel(stats.datasetTraits)
 
-  // FAQ q3 wording — stage-aware
+  const metricInSentence = labelForSentence(stats.metricLabel)
+
   const faqQ3 = stage
     ? `What is the average raise for a ${stage} ${industry} company?`
-    : `What is the average ${stats.metricLabel.toLowerCase()} for a ${industry} company in this dataset?`
+    : `What is the average ${metricInSentence} for a ${industry} company in this dataset?`
   const faqA3 = stage
     ? `The average raise across the ${stats.count} companies${stageQ} is ${avg}, with a median of ${median}.`
-    : `The average ${stats.metricLabel.toLowerCase()} across the ${stats.count} companies is ${avg}, with a median of ${median}.`
+    : `The average ${metricInSentence} across the ${stats.count} companies is ${avg}, with a median of ${median}.`
 
-  // Keywords — only include stage keyword when we know the stage
   const keywords: string[] = [
     industry,
     `${industry} funding`,
@@ -381,46 +410,44 @@ export function buildFallbackCopy(opts: GenerateCopyOptions): GeneratedCopy {
 
   return {
     title: `Top ${stats.count} ${industry} Companies by ${stats.metricLabel}`.slice(0, 60),
-    metaDescription: `Explore the top ${stats.count} ${industry} companies ranked by ${stats.metricLabel.toLowerCase()}. Collectively they have raised ${total}${stageQ}.`.slice(
+    metaDescription: `The top ${stats.count} ${industry} companies ranked by ${metricInSentence}, with a combined ${total}${stageQ}.`.slice(
       0,
       155,
     ),
     slug,
     h1: `The ${stats.count} Best-Funded ${industry} Companies`,
     intro: [
-      `This analysis covers ${stats.count} ${industry} companies${stageQ}, which have collectively raised ${total} in funding. The dataset spans ${stats.regionBreakdown.length} distinct region${stats.regionBreakdown.length !== 1 ? 's' : ''}.`,
-      `${stats.topCompany} leads the ranking with ${maxRaise}, whilst the average raise across the dataset is ${avg} and the median is ${median}. The top ten companies account for ${stats.top10Share.toFixed(1)}% of total funding.`,
+      `This dataset covers ${stats.count} ${industry} companies${stageQ}, which have collectively raised ${total}. The data spans ${stats.regionBreakdown.length} distinct region${stats.regionBreakdown.length !== 1 ? 's' : ''}.`,
+      `${stats.topCompany} leads with ${maxRaise}. The average across the dataset is ${avg} and the median is ${median}. The top ten companies account for ${stats.top10Share.toFixed(1)}% of total funding.`,
     ],
     sections: [
       {
         heading: 'The Biggest Raises',
-        body: `The top ten companies in this dataset have collectively claimed ${stats.top10Share.toFixed(1)}% of all funding raised. ${stats.topCompany} sits at the top with ${maxRaise}, a gap of ${formatMoney(stats.gapTop1Top2, cur, true)} ahead of the second-placed company. The average raise of ${avg} suggests a healthy spread of investor interest across the cohort.`,
+        body: `The top ten companies in this dataset account for ${stats.top10Share.toFixed(1)}% of all funding. ${stats.topCompany} leads with ${maxRaise}, a gap of ${formatMoney(stats.gapTop1Top2, cur, true)} ahead of the second-placed company. The average of ${avg} indicates a spread of investor interest across the cohort.`,
       },
       {
         heading: `Where They're Based`,
-        body: `${topRegion} is the dominant hub, accounting for ${stats.regionBreakdown[0]?.count ?? 0} of the ${stats.count} companies and ${formatMoney(stats.regionBreakdown[0]?.total ?? 0, cur, true)} in funding. ${stats.regionBreakdown.length > 1 ? `The dataset spans ${stats.regionBreakdown.length} regions in total, highlighting the geographic spread of ${industry} activity.` : ''}`,
+        body: `${topRegion} is the leading location, with ${stats.regionBreakdown[0]?.count ?? 0} of the ${stats.count} companies and ${formatMoney(stats.regionBreakdown[0]?.total ?? 0, cur, true)} in funding. ${stats.regionBreakdown.length > 1 ? `The dataset covers ${stats.regionBreakdown.length} regions in total.` : ''}`,
       },
       {
         heading: `What They're Building`,
         body: topTags
-          ? `The most common sector tags across the dataset are: ${topTags}. These themes reflect the core technological and commercial focus of the current ${industry} cohort.`
-          : `The companies span a wide variety of sub-sectors within ${industry}, reflecting the breadth of innovation${stageQ}.`,
+          ? `The most common sector tags are: ${topTags}. These reflect the core focus areas of the ${industry} companies in this dataset.`
+          : `The companies cover a range of sub-sectors within ${industry}.`,
       },
       {
-        heading: 'Trends to Watch',
-        body: `With ${stats.count} companies${stageQ} raising a combined ${total}, the ${industry} sector is demonstrating strong investor appetite. The concentration of activity in ${topRegion} underscores the importance of established tech ecosystems, whilst the median raise of ${median} suggests most founders are securing meaningful capital without relying on outlier rounds.`,
+        heading: 'Notable Companies',
+        body: `${stats.topCompany} raised the most${stageQ} at ${maxRaise}. The median of ${median} shows that most companies in this dataset secured meaningful capital. The top ten collectively hold ${stats.top10Share.toFixed(1)}% of all funding recorded.`,
       },
     ],
     insights: [
       `${stats.count} ${industry} companies have collectively raised ${total}.`,
-      `The top 10 companies account for ${stats.top10Share.toFixed(1)}% of all funding raised.`,
-      `${topRegion} is the leading hub with ${stats.regionBreakdown[0]?.count ?? 0} companies.`,
-      `Average raise: ${avg} · Median raise: ${median}.`,
-      `${stats.topCompany} leads the ranking with ${maxRaise}.`,
+      `The top 10 companies account for ${stats.top10Share.toFixed(1)}% of all funding.`,
+      `${topRegion} is the leading location with ${stats.regionBreakdown[0]?.count ?? 0} companies.`,
+      `Average: ${avg} · Median: ${median}.`,
+      `${stats.topCompany} leads with ${maxRaise}.`,
       ...(stats.topCategories.length > 0
-        ? [
-            `Most common sector: "${stats.topCategories[0].tag}" (${stats.topCategories[0].count} companies).`,
-          ]
+        ? [`Most common sector: "${stats.topCategories[0].tag}" (${stats.topCategories[0].count} companies).`]
         : []),
     ].slice(0, 6),
     faq: [
@@ -432,10 +459,7 @@ export function buildFallbackCopy(opts: GenerateCopyOptions): GeneratedCopy {
         q: `Which ${industry} company has raised the most funding?`,
         a: `${stats.topCompany} leads the ranking with ${maxRaise} in total funding raised.`,
       },
-      {
-        q: faqQ3,
-        a: faqA3,
-      },
+      { q: faqQ3, a: faqA3 },
     ],
     keywords,
   }
