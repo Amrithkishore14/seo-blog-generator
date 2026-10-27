@@ -210,7 +210,15 @@ const headers = computed(() => Object.keys(detectedColumns.value))
 
 <template>
   <main class="max-w-3xl mx-auto px-4 py-12">
-    <h1 class="text-2xl font-bold text-gray-900 mb-1">Generate a New Blog</h1>
+    <div class="flex items-start justify-between mb-1">
+      <h1 class="text-2xl font-bold text-gray-900">Generate a New Blog</h1>
+      <form method="POST" action="/api/admin/logout">
+        <button
+          type="submit"
+          class="text-xs text-gray-400 hover:text-gray-600 underline"
+        >Log out</button>
+      </form>
+    </div>
     <p class="text-gray-500 mb-8 text-sm">
       Upload any company-ranking CSV. The system detects columns automatically.
     </p>

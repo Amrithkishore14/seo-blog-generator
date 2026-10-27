@@ -8,8 +8,6 @@
  * "Pure" means: no Nuxt/Nitro imports, no side-effects, easily unit-tested.
  */
 
-import Papa from 'papaparse'
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 /**
@@ -64,25 +62,95 @@ export interface ParsedMoney {
 /**
  * Parse raw CSV text into a list of row objects.
  *
- * Why PapaParse?  It handles quoted fields, multi-line values, different
- * line endings, and BOM markers robustly — edge cases that break hand-rolled
- * split(",") parsing.
+ * Inline RFC 4180-compliant parser — replaces PapaParse to avoid a Rollup
+ * parse error in the Cloudflare Pages build.  PapaParse's UMD bundle contains
+ * embedded web-worker creation code that @rollup/plugin-commonjs cannot
+ * parse when bundling for the Workers runtime.
+ *
+ * Handles: quoted fields (commas/newlines/doubled-quotes inside), BOM,
+ * CRLF/LF/CR line endings, blank lines (skipped), header + cell trimming.
  */
 export function parseCsv(text: string): {
   headers: string[]
   rows: Record<string, string>[]
 } {
-  const result = Papa.parse<Record<string, string>>(text, {
-    header: true, // Use first row as object keys
-    skipEmptyLines: true, // Ignore blank rows
-    // Trim header names so "  Company " becomes "Company"
-    transformHeader: (h: string) => h.trim(),
-    // Trim cell values too
-    transform: (v: string) => v.trim(),
+  // Strip UTF-8 BOM if present
+  const src = text.startsWith('\uFEFF') ? text.slice(1) : text
+  const records = parseRecords(src)
+  if (records.length === 0) return { headers: [], rows: [] }
+
+  const headers = records[0].map((h) => h.trim())
+  const rows = records.slice(1).map((cells) => {
+    const row: Record<string, string> = {}
+    for (let i = 0; i < headers.length; i++) {
+      row[headers[i]] = (cells[i] ?? '').trim()
+    }
+    return row
   })
 
-  const headers = (result.meta.fields ?? []) as string[]
-  return { headers, rows: result.data }
+  return { headers, rows }
+}
+
+/** Core RFC 4180 tokeniser — returns a 2-D array of raw cell strings. */
+function parseRecords(src: string): string[][] {
+  const records: string[][] = []
+  let pos = 0
+  const len = src.length
+
+  while (pos < len) {
+    const record = parseRecord()
+    // Skip blank lines (a single empty field with no content)
+    if (record.length > 1 || (record.length === 1 && record[0] !== '')) {
+      records.push(record)
+    }
+  }
+
+  return records
+
+  function parseRecord(): string[] {
+    const fields: string[] = []
+    while (pos < len) {
+      fields.push(parseField())
+      if (pos < len && src[pos] === ',') {
+        pos++ // comma → another field follows
+      } else {
+        // End of record: consume optional CRLF / LF / CR
+        if (pos < len && src[pos] === '\r') pos++
+        if (pos < len && src[pos] === '\n') pos++
+        break
+      }
+    }
+    return fields
+  }
+
+  function parseField(): string {
+    if (pos < len && src[pos] === '"') {
+      // Quoted field — may contain commas, newlines, doubled-quote escapes
+      pos++ // consume opening quote
+      let value = ''
+      while (pos < len) {
+        if (src[pos] === '"') {
+          if (pos + 1 < len && src[pos + 1] === '"') {
+            value += '"' // escaped quote ("" → ")
+            pos += 2
+          } else {
+            pos++ // closing quote
+            break
+          }
+        } else {
+          value += src[pos++]
+        }
+      }
+      return value
+    }
+
+    // Unquoted field — read until comma, CR, LF, or EOF
+    const start = pos
+    while (pos < len && src[pos] !== ',' && src[pos] !== '\r' && src[pos] !== '\n') {
+      pos++
+    }
+    return src.slice(start, pos)
+  }
 }
 
 // ── parseMoney ────────────────────────────────────────────────────────────────
