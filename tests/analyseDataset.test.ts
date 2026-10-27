@@ -688,7 +688,7 @@ describe('buildFallbackCopy', () => {
     expect(totalFaq?.a).toContain('50,000,000')
   })
 
-  it('includes "Seed-stage" in keywords when datasetTraits contains Stage: Seed', () => {
+  it('includes "seed-stage" in keywords when datasetTraits contains Stage: Seed', () => {
     expect(result.keywords.some((k) => k.toLowerCase().includes('seed'))).toBe(true)
   })
 })

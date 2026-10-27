@@ -89,7 +89,7 @@ async function main() {
       console.log(`     Title:    "${entry.copy.title}"`)
       console.log(`     Companies: ${entry.stats.count}`)
       console.log(
-        `     Total ${entry.stats.metricLabel}: ${entry.stats.metricCurrency}${entry.stats.metricTotal.toLocaleString('en-GB')}`,
+        `     ${entry.stats.metricLabel}: ${entry.stats.metricCurrency}${entry.stats.metricTotal.toLocaleString('en-GB')}`,
       )
       console.log(`     AI copy:   ${entry.usedFallback ? 'fallback template' : 'Gemini'}`)
       console.log()
