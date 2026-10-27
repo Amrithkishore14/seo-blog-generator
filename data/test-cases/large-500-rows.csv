@@ -1,0 +1,501 @@
+Company,Location,Revenue (USD),Employees,Sector,Stage
+Company1,Manchester,$78960953,117,AI,Series A
+Company2,Bristol,$83510707,268,Fintech,Series B
+Company3,Edinburgh,$7124568,613,Healthtech,Series C
+Company4,Oxford,$33967377,402,Cloud,Seed
+Company5,Cambridge,$98035466,991,Data,Series A
+Company6,Leeds,$22844852,242,Robotics,Series B
+Company7,Glasgow,$3349067,342,CleanTech,Series C
+Company8,Birmingham,$25103843,861,EdTech,Seed
+Company9,Cardiff,$95032383,13,Cybersecurity,Series A
+Company10,Brighton,$41302892,662,SaaS,Series B
+Company11,Nottingham,$53579240,654,AI,Series C
+Company12,London,$46413044,363,Fintech,Seed
+Company13,Manchester,$30791965,693,Healthtech,Series A
+Company14,Bristol,$98300913,871,Cloud,Series B
+Company15,Edinburgh,$32488337,325,Data,Series C
+Company16,Oxford,$55308660,847,Robotics,Seed
+Company17,Cambridge,$39783582,994,CleanTech,Series A
+Company18,Leeds,$5323794,100,EdTech,Series B
+Company19,Glasgow,$92011967,397,Cybersecurity,Series C
+Company20,Birmingham,$66045739,418,SaaS,Seed
+Company21,Cardiff,$42966858,66,AI,Series A
+Company22,Brighton,$9118361,16,Fintech,Series B
+Company23,Nottingham,$43854819,513,Healthtech,Series C
+Company24,London,$36966535,743,Cloud,Seed
+Company25,Manchester,$13366153,714,Data,Series A
+Company26,Bristol,$20944329,940,Robotics,Series B
+Company27,Edinburgh,$62027647,67,CleanTech,Series C
+Company28,Oxford,$49629640,501,EdTech,Seed
+Company29,Cambridge,$13786452,593,Cybersecurity,Series A
+Company30,Leeds,$6731841,170,SaaS,Series B
+Company31,Glasgow,$28356053,766,AI,Series C
+Company32,Birmingham,$66156880,35,Fintech,Seed
+Company33,Cardiff,$28365491,630,Healthtech,Series A
+Company34,Brighton,$30864962,401,Cloud,Series B
+Company35,Nottingham,$54371747,901,Data,Series C
+Company36,London,$67963877,527,Robotics,Seed
+Company37,Manchester,$48295779,200,CleanTech,Series A
+Company38,Bristol,$96828599,994,EdTech,Series B
+Company39,Edinburgh,$58543362,394,Cybersecurity,Series C
+Company40,Oxford,$23120290,498,SaaS,Seed
+Company41,Cambridge,$63318474,672,AI,Series A
+Company42,Leeds,$36396819,760,Fintech,Series B
+Company43,Glasgow,$28268212,775,Healthtech,Series C
+Company44,Birmingham,$15717031,158,Cloud,Seed
+Company45,Cardiff,$53831011,548,Data,Series A
+Company46,Brighton,$46823043,139,Robotics,Series B
+Company47,Nottingham,$55949092,503,CleanTech,Series C
+Company48,London,$73096188,401,EdTech,Seed
+Company49,Manchester,$60126750,928,Cybersecurity,Series A
+Company50,Bristol,$57600153,876,SaaS,Series B
+Company51,Edinburgh,$98567492,538,AI,Series C
+Company52,Oxford,$15488910,355,Fintech,Seed
+Company53,Cambridge,$59111927,70,Healthtech,Series A
+Company54,Leeds,$39146198,587,Cloud,Series B
+Company55,Glasgow,$94411015,608,Data,Series C
+Company56,Birmingham,$95852090,168,Robotics,Seed
+Company57,Cardiff,$76831170,780,CleanTech,Series A
+Company58,Brighton,$91768109,743,EdTech,Series B
+Company59,Nottingham,$23383074,497,Cybersecurity,Series C
+Company60,London,$39708997,959,SaaS,Seed
+Company61,Manchester,$94014946,875,AI,Series A
+Company62,Bristol,$6069973,355,Fintech,Series B
+Company63,Edinburgh,$92741305,725,Healthtech,Series C
+Company64,Oxford,$30177011,505,Cloud,Seed
+Company65,Cambridge,$37851036,256,Data,Series A
+Company66,Leeds,$33787946,573,Robotics,Series B
+Company67,Glasgow,$87021648,94,CleanTech,Series C
+Company68,Birmingham,$88786828,980,EdTech,Seed
+Company69,Cardiff,$88602762,200,Cybersecurity,Series A
+Company70,Brighton,$93227922,982,SaaS,Series B
+Company71,Nottingham,$58526506,351,AI,Series C
+Company72,London,$16081212,794,Fintech,Seed
+Company73,Manchester,$25554208,68,Healthtech,Series A
+Company74,Bristol,$65722824,305,Cloud,Series B
+Company75,Edinburgh,$66396539,666,Data,Series C
+Company76,Oxford,$25579077,951,Robotics,Seed
+Company77,Cambridge,$42498077,907,CleanTech,Series A
+Company78,Leeds,$4471581,567,EdTech,Series B
+Company79,Glasgow,$8294794,523,Cybersecurity,Series C
+Company80,Birmingham,$19977334,694,SaaS,Seed
+Company81,Cardiff,$80441475,425,AI,Series A
+Company82,Brighton,$40900095,177,Fintech,Series B
+Company83,Nottingham,$40639257,904,Healthtech,Series C
+Company84,London,$17513797,874,Cloud,Seed
+Company85,Manchester,$43733894,463,Data,Series A
+Company86,Bristol,$17705707,675,Robotics,Series B
+Company87,Edinburgh,$49854970,826,CleanTech,Series C
+Company88,Oxford,$40393035,173,EdTech,Seed
+Company89,Cambridge,$10218034,911,Cybersecurity,Series A
+Company90,Leeds,$31645817,383,SaaS,Series B
+Company91,Glasgow,$69473358,992,AI,Series C
+Company92,Birmingham,$16147760,450,Fintech,Seed
+Company93,Cardiff,$69544329,872,Healthtech,Series A
+Company94,Brighton,$91276536,330,Cloud,Series B
+Company95,Nottingham,$19387351,897,Data,Series C
+Company96,London,$39751894,27,Robotics,Seed
+Company97,Manchester,$66892439,266,CleanTech,Series A
+Company98,Bristol,$41565678,609,EdTech,Series B
+Company99,Edinburgh,$57395527,102,Cybersecurity,Series C
+Company100,Oxford,$92473579,994,SaaS,Seed
+Company101,Cambridge,$5467014,71,AI,Series A
+Company102,Leeds,$16970910,598,Fintech,Series B
+Company103,Glasgow,$84353352,571,Healthtech,Series C
+Company104,Birmingham,$72219189,594,Cloud,Seed
+Company105,Cardiff,$12436172,338,Data,Series A
+Company106,Brighton,$92906414,338,Robotics,Series B
+Company107,Nottingham,$22203182,683,CleanTech,Series C
+Company108,London,$44754125,53,EdTech,Seed
+Company109,Manchester,$26689427,676,Cybersecurity,Series A
+Company110,Bristol,$12038114,49,SaaS,Series B
+Company111,Edinburgh,$32483198,30,AI,Series C
+Company112,Oxford,$37607810,527,Fintech,Seed
+Company113,Cambridge,$38702499,256,Healthtech,Series A
+Company114,Leeds,$71803101,950,Cloud,Series B
+Company115,Glasgow,$90634472,658,Data,Series C
+Company116,Birmingham,$58409984,942,Robotics,Seed
+Company117,Cardiff,$4930044,995,CleanTech,Series A
+Company118,Brighton,$9205665,924,EdTech,Series B
+Company119,Nottingham,$81309461,470,Cybersecurity,Series C
+Company120,London,$44251050,934,SaaS,Seed
+Company121,Manchester,$30534283,802,AI,Series A
+Company122,Bristol,$92642924,855,Fintech,Series B
+Company123,Edinburgh,$32167582,881,Healthtech,Series C
+Company124,Oxford,$76408057,945,Cloud,Seed
+Company125,Cambridge,$19453720,439,Data,Series A
+Company126,Leeds,$5086790,694,Robotics,Series B
+Company127,Glasgow,$88485244,843,CleanTech,Series C
+Company128,Birmingham,$62378354,139,EdTech,Seed
+Company129,Cardiff,$9324487,78,Cybersecurity,Series A
+Company130,Brighton,$3049592,487,SaaS,Series B
+Company131,Nottingham,$14053761,68,AI,Series C
+Company132,London,$10825890,418,Fintech,Seed
+Company133,Manchester,$32446106,11,Healthtech,Series A
+Company134,Bristol,$88832441,265,Cloud,Series B
+Company135,Edinburgh,$585978,833,Data,Series C
+Company136,Oxford,$88171297,634,Robotics,Seed
+Company137,Cambridge,$26143519,248,CleanTech,Series A
+Company138,Leeds,$67465832,472,EdTech,Series B
+Company139,Glasgow,$18904659,519,Cybersecurity,Series C
+Company140,Birmingham,$89679904,737,SaaS,Seed
+Company141,Cardiff,$61166899,822,AI,Series A
+Company142,Brighton,$15523060,326,Fintech,Series B
+Company143,Nottingham,$82282309,207,Healthtech,Series C
+Company144,London,$38963410,279,Cloud,Seed
+Company145,Manchester,$82028800,166,Data,Series A
+Company146,Bristol,$59839636,698,Robotics,Series B
+Company147,Edinburgh,$75981339,823,CleanTech,Series C
+Company148,Oxford,$15656498,904,EdTech,Seed
+Company149,Cambridge,$64294643,941,Cybersecurity,Series A
+Company150,Leeds,$46102156,960,SaaS,Series B
+Company151,Glasgow,$11899760,321,AI,Series C
+Company152,Birmingham,$35101204,927,Fintech,Seed
+Company153,Cardiff,$23533927,537,Healthtech,Series A
+Company154,Brighton,$76821875,720,Cloud,Series B
+Company155,Nottingham,$23682037,168,Data,Series C
+Company156,London,$47464646,664,Robotics,Seed
+Company157,Manchester,$31787475,280,CleanTech,Series A
+Company158,Bristol,$25808868,281,EdTech,Series B
+Company159,Edinburgh,$10526177,619,Cybersecurity,Series C
+Company160,Oxford,$17027554,916,SaaS,Seed
+Company161,Cambridge,$16720209,816,AI,Series A
+Company162,Leeds,$27341498,401,Fintech,Series B
+Company163,Glasgow,$57870043,834,Healthtech,Series C
+Company164,Birmingham,$41683813,241,Cloud,Seed
+Company165,Cardiff,$8818943,206,Data,Series A
+Company166,Brighton,$49987632,640,Robotics,Series B
+Company167,Nottingham,$70856518,867,CleanTech,Series C
+Company168,London,$43921592,142,EdTech,Seed
+Company169,Manchester,$20059223,653,Cybersecurity,Series A
+Company170,Bristol,$19929236,806,SaaS,Series B
+Company171,Edinburgh,$6675408,191,AI,Series C
+Company172,Oxford,$83254502,928,Fintech,Seed
+Company173,Cambridge,$96991716,32,Healthtech,Series A
+Company174,Leeds,$10242333,83,Cloud,Series B
+Company175,Glasgow,$54845724,128,Data,Series C
+Company176,Birmingham,$12475377,726,Robotics,Seed
+Company177,Cardiff,$57840206,574,CleanTech,Series A
+Company178,Brighton,$70758060,816,EdTech,Series B
+Company179,Nottingham,$19768773,978,Cybersecurity,Series C
+Company180,London,$95127560,661,SaaS,Seed
+Company181,Manchester,$65758148,581,AI,Series A
+Company182,Bristol,$42725868,376,Fintech,Series B
+Company183,Edinburgh,$25952925,297,Healthtech,Series C
+Company184,Oxford,$19899946,490,Cloud,Seed
+Company185,Cambridge,$62521356,134,Data,Series A
+Company186,Leeds,$59735349,171,Robotics,Series B
+Company187,Glasgow,$27714812,208,CleanTech,Series C
+Company188,Birmingham,$37444006,511,EdTech,Seed
+Company189,Cardiff,$81502882,104,Cybersecurity,Series A
+Company190,Brighton,$79946024,776,SaaS,Series B
+Company191,Nottingham,$26744381,501,AI,Series C
+Company192,London,$12451840,469,Fintech,Seed
+Company193,Manchester,$58498724,937,Healthtech,Series A
+Company194,Bristol,$44338127,886,Cloud,Series B
+Company195,Edinburgh,$25886138,797,Data,Series C
+Company196,Oxford,$55363844,72,Robotics,Seed
+Company197,Cambridge,$50382658,490,CleanTech,Series A
+Company198,Leeds,$39073888,389,EdTech,Series B
+Company199,Glasgow,$82254887,245,Cybersecurity,Series C
+Company200,Birmingham,$61144383,848,SaaS,Seed
+Company201,Cardiff,$53103417,858,AI,Series A
+Company202,Brighton,$8773811,814,Fintech,Series B
+Company203,Nottingham,$38898424,859,Healthtech,Series C
+Company204,London,$96405702,309,Cloud,Seed
+Company205,Manchester,$28247409,677,Data,Series A
+Company206,Bristol,$81874986,851,Robotics,Series B
+Company207,Edinburgh,$10535737,190,CleanTech,Series C
+Company208,Oxford,$85818469,792,EdTech,Seed
+Company209,Cambridge,$29196711,290,Cybersecurity,Series A
+Company210,Leeds,$69530318,421,SaaS,Series B
+Company211,Glasgow,$22719165,937,AI,Series C
+Company212,Birmingham,$99129642,567,Fintech,Seed
+Company213,Cardiff,$7740929,522,Healthtech,Series A
+Company214,Brighton,$96865911,576,Cloud,Series B
+Company215,Nottingham,$74761045,488,Data,Series C
+Company216,London,$97430520,756,Robotics,Seed
+Company217,Manchester,$895175,966,CleanTech,Series A
+Company218,Bristol,$8864320,573,EdTech,Series B
+Company219,Edinburgh,$58807650,965,Cybersecurity,Series C
+Company220,Oxford,$98536213,154,SaaS,Seed
+Company221,Cambridge,$32376853,411,AI,Series A
+Company222,Leeds,$6728419,806,Fintech,Series B
+Company223,Glasgow,$98047450,511,Healthtech,Series C
+Company224,Birmingham,$76687287,795,Cloud,Seed
+Company225,Cardiff,$15309340,801,Data,Series A
+Company226,Brighton,$59153578,607,Robotics,Series B
+Company227,Nottingham,$56860667,447,CleanTech,Series C
+Company228,London,$80528274,905,EdTech,Seed
+Company229,Manchester,$6796100,405,Cybersecurity,Series A
+Company230,Bristol,$36450264,101,SaaS,Series B
+Company231,Edinburgh,$88994359,489,AI,Series C
+Company232,Oxford,$83726361,361,Fintech,Seed
+Company233,Cambridge,$54998966,741,Healthtech,Series A
+Company234,Leeds,$7374066,721,Cloud,Series B
+Company235,Glasgow,$95431509,363,Data,Series C
+Company236,Birmingham,$31612787,185,Robotics,Seed
+Company237,Cardiff,$92239688,942,CleanTech,Series A
+Company238,Brighton,$79077357,346,EdTech,Series B
+Company239,Nottingham,$36700711,409,Cybersecurity,Series C
+Company240,London,$75119123,522,SaaS,Seed
+Company241,Manchester,$83176466,598,AI,Series A
+Company242,Bristol,$63614070,669,Fintech,Series B
+Company243,Edinburgh,$2381408,223,Healthtech,Series C
+Company244,Oxford,$13500001,875,Cloud,Seed
+Company245,Cambridge,$63985952,592,Data,Series A
+Company246,Leeds,$53412380,300,Robotics,Series B
+Company247,Glasgow,$10536719,277,CleanTech,Series C
+Company248,Birmingham,$11217837,431,EdTech,Seed
+Company249,Cardiff,$30812020,648,Cybersecurity,Series A
+Company250,Brighton,$28502708,990,SaaS,Series B
+Company251,Nottingham,$24850167,250,AI,Series C
+Company252,London,$64591108,853,Fintech,Seed
+Company253,Manchester,$48692454,515,Healthtech,Series A
+Company254,Bristol,$36063318,770,Cloud,Series B
+Company255,Edinburgh,$17581229,934,Data,Series C
+Company256,Oxford,$33684446,535,Robotics,Seed
+Company257,Cambridge,$52935907,786,CleanTech,Series A
+Company258,Leeds,$47640037,248,EdTech,Series B
+Company259,Glasgow,$6664642,36,Cybersecurity,Series C
+Company260,Birmingham,$3029605,587,SaaS,Seed
+Company261,Cardiff,$68981891,484,AI,Series A
+Company262,Brighton,$75211553,385,Fintech,Series B
+Company263,Nottingham,$27688443,895,Healthtech,Series C
+Company264,London,$79077910,409,Cloud,Seed
+Company265,Manchester,$38765045,795,Data,Series A
+Company266,Bristol,$36805366,680,Robotics,Series B
+Company267,Edinburgh,$12415530,143,CleanTech,Series C
+Company268,Oxford,$75154618,60,EdTech,Seed
+Company269,Cambridge,$81681882,172,Cybersecurity,Series A
+Company270,Leeds,$32503865,602,SaaS,Series B
+Company271,Glasgow,$31651202,968,AI,Series C
+Company272,Birmingham,$22036127,291,Fintech,Seed
+Company273,Cardiff,$62032919,469,Healthtech,Series A
+Company274,Brighton,$52687839,348,Cloud,Series B
+Company275,Nottingham,$51919604,514,Data,Series C
+Company276,London,$25862753,242,Robotics,Seed
+Company277,Manchester,$63594866,379,CleanTech,Series A
+Company278,Bristol,$51064757,856,EdTech,Series B
+Company279,Edinburgh,$1815769,205,Cybersecurity,Series C
+Company280,Oxford,$20724649,304,SaaS,Seed
+Company281,Cambridge,$59225297,345,AI,Series A
+Company282,Leeds,$4774380,624,Fintech,Series B
+Company283,Glasgow,$15956939,868,Healthtech,Series C
+Company284,Birmingham,$57105601,224,Cloud,Seed
+Company285,Cardiff,$41940048,705,Data,Series A
+Company286,Brighton,$44569312,706,Robotics,Series B
+Company287,Nottingham,$8145357,297,CleanTech,Series C
+Company288,London,$93018789,999,EdTech,Seed
+Company289,Manchester,$18024915,625,Cybersecurity,Series A
+Company290,Bristol,$48424694,902,SaaS,Series B
+Company291,Edinburgh,$14029711,576,AI,Series C
+Company292,Oxford,$40181964,351,Fintech,Seed
+Company293,Cambridge,$41337263,36,Healthtech,Series A
+Company294,Leeds,$16425148,137,Cloud,Series B
+Company295,Glasgow,$95131294,185,Data,Series C
+Company296,Birmingham,$56576703,308,Robotics,Seed
+Company297,Cardiff,$86390791,300,CleanTech,Series A
+Company298,Brighton,$88901542,894,EdTech,Series B
+Company299,Nottingham,$84690575,602,Cybersecurity,Series C
+Company300,London,$41008287,860,SaaS,Seed
+Company301,Manchester,$37788812,722,AI,Series A
+Company302,Bristol,$70844833,275,Fintech,Series B
+Company303,Edinburgh,$33390582,798,Healthtech,Series C
+Company304,Oxford,$6113521,399,Cloud,Seed
+Company305,Cambridge,$57920445,386,Data,Series A
+Company306,Leeds,$62324501,673,Robotics,Series B
+Company307,Glasgow,$36105649,737,CleanTech,Series C
+Company308,Birmingham,$38273105,133,EdTech,Seed
+Company309,Cardiff,$58559034,539,Cybersecurity,Series A
+Company310,Brighton,$40511111,278,SaaS,Series B
+Company311,Nottingham,$39726553,720,AI,Series C
+Company312,London,$12137665,550,Fintech,Seed
+Company313,Manchester,$33924438,176,Healthtech,Series A
+Company314,Bristol,$60584640,230,Cloud,Series B
+Company315,Edinburgh,$73104555,397,Data,Series C
+Company316,Oxford,$91865589,896,Robotics,Seed
+Company317,Cambridge,$47914440,818,CleanTech,Series A
+Company318,Leeds,$26450608,487,EdTech,Series B
+Company319,Glasgow,$1377254,591,Cybersecurity,Series C
+Company320,Birmingham,$2429998,925,SaaS,Seed
+Company321,Cardiff,$25323817,467,AI,Series A
+Company322,Brighton,$73245371,727,Fintech,Series B
+Company323,Nottingham,$36473610,552,Healthtech,Series C
+Company324,London,$74424060,849,Cloud,Seed
+Company325,Manchester,$50550861,892,Data,Series A
+Company326,Bristol,$8627717,293,Robotics,Series B
+Company327,Edinburgh,$39898186,328,CleanTech,Series C
+Company328,Oxford,$72051524,96,EdTech,Seed
+Company329,Cambridge,$36093450,799,Cybersecurity,Series A
+Company330,Leeds,$45774816,8,SaaS,Series B
+Company331,Glasgow,$1603393,509,AI,Series C
+Company332,Birmingham,$18568684,696,Fintech,Seed
+Company333,Cardiff,$38708315,975,Healthtech,Series A
+Company334,Brighton,$96524186,117,Cloud,Series B
+Company335,Nottingham,$60385910,880,Data,Series C
+Company336,London,$15539523,216,Robotics,Seed
+Company337,Manchester,$39774274,472,CleanTech,Series A
+Company338,Bristol,$60967401,749,EdTech,Series B
+Company339,Edinburgh,$72467252,669,Cybersecurity,Series C
+Company340,Oxford,$9681899,74,SaaS,Seed
+Company341,Cambridge,$677031,321,AI,Series A
+Company342,Leeds,$34799333,113,Fintech,Series B
+Company343,Glasgow,$21738928,171,Healthtech,Series C
+Company344,Birmingham,$84094306,251,Cloud,Seed
+Company345,Cardiff,$3423175,766,Data,Series A
+Company346,Brighton,$52574336,97,Robotics,Series B
+Company347,Nottingham,$20920523,692,CleanTech,Series C
+Company348,London,$92601551,976,EdTech,Seed
+Company349,Manchester,$89655655,842,Cybersecurity,Series A
+Company350,Bristol,$21579792,441,SaaS,Series B
+Company351,Edinburgh,$34500297,15,AI,Series C
+Company352,Oxford,$83330931,146,Fintech,Seed
+Company353,Cambridge,$9938111,262,Healthtech,Series A
+Company354,Leeds,$66759587,563,Cloud,Series B
+Company355,Glasgow,$66524669,148,Data,Series C
+Company356,Birmingham,$65876869,786,Robotics,Seed
+Company357,Cardiff,$36194428,715,CleanTech,Series A
+Company358,Brighton,$29335362,934,EdTech,Series B
+Company359,Nottingham,$21248547,229,Cybersecurity,Series C
+Company360,London,$81119367,877,SaaS,Seed
+Company361,Manchester,$30286743,107,AI,Series A
+Company362,Bristol,$13294164,774,Fintech,Series B
+Company363,Edinburgh,$20867908,907,Healthtech,Series C
+Company364,Oxford,$12288671,984,Cloud,Seed
+Company365,Cambridge,$74894290,449,Data,Series A
+Company366,Leeds,$98441852,410,Robotics,Series B
+Company367,Glasgow,$41284914,534,CleanTech,Series C
+Company368,Birmingham,$4789932,624,EdTech,Seed
+Company369,Cardiff,$66153761,242,Cybersecurity,Series A
+Company370,Brighton,$52132120,766,SaaS,Series B
+Company371,Nottingham,$88377499,388,AI,Series C
+Company372,London,$86227726,624,Fintech,Seed
+Company373,Manchester,$94178043,178,Healthtech,Series A
+Company374,Bristol,$87014910,669,Cloud,Series B
+Company375,Edinburgh,$35138046,493,Data,Series C
+Company376,Oxford,$11032515,895,Robotics,Seed
+Company377,Cambridge,$10743094,379,CleanTech,Series A
+Company378,Leeds,$53573341,479,EdTech,Series B
+Company379,Glasgow,$74180071,272,Cybersecurity,Series C
+Company380,Birmingham,$86568962,985,SaaS,Seed
+Company381,Cardiff,$4574319,650,AI,Series A
+Company382,Brighton,$11672664,686,Fintech,Series B
+Company383,Nottingham,$75169758,272,Healthtech,Series C
+Company384,London,$9540127,961,Cloud,Seed
+Company385,Manchester,$37217458,506,Data,Series A
+Company386,Bristol,$49605036,927,Robotics,Series B
+Company387,Edinburgh,$24875812,888,CleanTech,Series C
+Company388,Oxford,$13902395,320,EdTech,Seed
+Company389,Cambridge,$17560455,442,Cybersecurity,Series A
+Company390,Leeds,$46096926,730,SaaS,Series B
+Company391,Glasgow,$81327168,629,AI,Series C
+Company392,Birmingham,$64272586,741,Fintech,Seed
+Company393,Cardiff,$99667870,510,Healthtech,Series A
+Company394,Brighton,$52950954,313,Cloud,Series B
+Company395,Nottingham,$51271762,988,Data,Series C
+Company396,London,$17628610,348,Robotics,Seed
+Company397,Manchester,$21064503,851,CleanTech,Series A
+Company398,Bristol,$47984126,453,EdTech,Series B
+Company399,Edinburgh,$69229325,397,Cybersecurity,Series C
+Company400,Oxford,$26397477,654,SaaS,Seed
+Company401,Cambridge,$98983308,878,AI,Series A
+Company402,Leeds,$55418342,140,Fintech,Series B
+Company403,Glasgow,$58105805,513,Healthtech,Series C
+Company404,Birmingham,$57358450,905,Cloud,Seed
+Company405,Cardiff,$22244681,295,Data,Series A
+Company406,Brighton,$23189803,702,Robotics,Series B
+Company407,Nottingham,$99295384,253,CleanTech,Series C
+Company408,London,$95963973,291,EdTech,Seed
+Company409,Manchester,$75975332,632,Cybersecurity,Series A
+Company410,Bristol,$11128381,568,SaaS,Series B
+Company411,Edinburgh,$11596750,344,AI,Series C
+Company412,Oxford,$65769735,684,Fintech,Seed
+Company413,Cambridge,$97314121,535,Healthtech,Series A
+Company414,Leeds,$80160366,279,Cloud,Series B
+Company415,Glasgow,$92017060,357,Data,Series C
+Company416,Birmingham,$49223222,765,Robotics,Seed
+Company417,Cardiff,$68425566,206,CleanTech,Series A
+Company418,Brighton,$35480668,980,EdTech,Series B
+Company419,Nottingham,$36179255,945,Cybersecurity,Series C
+Company420,London,$53389006,331,SaaS,Seed
+Company421,Manchester,$23450712,229,AI,Series A
+Company422,Bristol,$88893742,345,Fintech,Series B
+Company423,Edinburgh,$27181147,324,Healthtech,Series C
+Company424,Oxford,$85499505,807,Cloud,Seed
+Company425,Cambridge,$3665504,794,Data,Series A
+Company426,Leeds,$85256778,656,Robotics,Series B
+Company427,Glasgow,$31386393,643,CleanTech,Series C
+Company428,Birmingham,$94026627,445,EdTech,Seed
+Company429,Cardiff,$97292231,267,Cybersecurity,Series A
+Company430,Brighton,$63272099,974,SaaS,Series B
+Company431,Nottingham,$57836643,602,AI,Series C
+Company432,London,$49455937,436,Fintech,Seed
+Company433,Manchester,$75143608,633,Healthtech,Series A
+Company434,Bristol,$58156984,965,Cloud,Series B
+Company435,Edinburgh,$92959931,270,Data,Series C
+Company436,Oxford,$87071269,288,Robotics,Seed
+Company437,Cambridge,$82279030,100,CleanTech,Series A
+Company438,Leeds,$17374642,258,EdTech,Series B
+Company439,Glasgow,$63924266,791,Cybersecurity,Series C
+Company440,Birmingham,$90340974,569,SaaS,Seed
+Company441,Cardiff,$8670120,406,AI,Series A
+Company442,Brighton,$33633959,993,Fintech,Series B
+Company443,Nottingham,$71770109,42,Healthtech,Series C
+Company444,London,$25344558,802,Cloud,Seed
+Company445,Manchester,$75542272,55,Data,Series A
+Company446,Bristol,$88696967,36,Robotics,Series B
+Company447,Edinburgh,$51687289,564,CleanTech,Series C
+Company448,Oxford,$44076519,280,EdTech,Seed
+Company449,Cambridge,$61496746,851,Cybersecurity,Series A
+Company450,Leeds,$31033327,684,SaaS,Series B
+Company451,Glasgow,$95916562,558,AI,Series C
+Company452,Birmingham,$65124301,939,Fintech,Seed
+Company453,Cardiff,$90968571,14,Healthtech,Series A
+Company454,Brighton,$95992606,535,Cloud,Series B
+Company455,Nottingham,$66928171,867,Data,Series C
+Company456,London,$77762220,611,Robotics,Seed
+Company457,Manchester,$71347310,742,CleanTech,Series A
+Company458,Bristol,$57604574,108,EdTech,Series B
+Company459,Edinburgh,$43760763,442,Cybersecurity,Series C
+Company460,Oxford,$51851155,319,SaaS,Seed
+Company461,Cambridge,$60350408,70,AI,Series A
+Company462,Leeds,$62060547,871,Fintech,Series B
+Company463,Glasgow,$44383688,665,Healthtech,Series C
+Company464,Birmingham,$84605484,190,Cloud,Seed
+Company465,Cardiff,$75684786,166,Data,Series A
+Company466,Brighton,$50880244,442,Robotics,Series B
+Company467,Nottingham,$33917486,950,CleanTech,Series C
+Company468,London,$26629037,10,EdTech,Seed
+Company469,Manchester,$16427237,613,Cybersecurity,Series A
+Company470,Bristol,$82665249,574,SaaS,Series B
+Company471,Edinburgh,$6180771,542,AI,Series C
+Company472,Oxford,$88740085,752,Fintech,Seed
+Company473,Cambridge,$3419904,22,Healthtech,Series A
+Company474,Leeds,$3995995,705,Cloud,Series B
+Company475,Glasgow,$33749070,974,Data,Series C
+Company476,Birmingham,$27099896,254,Robotics,Seed
+Company477,Cardiff,$80682657,622,CleanTech,Series A
+Company478,Brighton,$52472763,696,EdTech,Series B
+Company479,Nottingham,$19651152,871,Cybersecurity,Series C
+Company480,London,$2016256,51,SaaS,Seed
+Company481,Manchester,$15849784,371,AI,Series A
+Company482,Bristol,$22947571,228,Fintech,Series B
+Company483,Edinburgh,$28197121,303,Healthtech,Series C
+Company484,Oxford,$67955146,343,Cloud,Seed
+Company485,Cambridge,$14321062,420,Data,Series A
+Company486,Leeds,$37688740,190,Robotics,Series B
+Company487,Glasgow,$58453599,90,CleanTech,Series C
+Company488,Birmingham,$63066945,319,EdTech,Seed
+Company489,Cardiff,$35433565,684,Cybersecurity,Series A
+Company490,Brighton,$20176582,752,SaaS,Series B
+Company491,Nottingham,$17779422,89,AI,Series C
+Company492,London,$38413992,385,Fintech,Seed
+Company493,Manchester,$79241363,390,Healthtech,Series A
+Company494,Bristol,$14241659,731,Cloud,Series B
+Company495,Edinburgh,$78384472,11,Data,Series C
+Company496,Oxford,$98977924,861,Robotics,Seed
+Company497,Cambridge,$84480180,979,CleanTech,Series A
+Company498,Leeds,$5823471,56,EdTech,Series B
+Company499,Glasgow,$76256710,335,Cybersecurity,Series C
+Company500,Birmingham,$53266395,755,SaaS,Seed

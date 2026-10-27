@@ -1,0 +1,9 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><title>Not a CSV</title></head>
+<body>
+  <h1>This is an HTML file renamed to .csv</h1>
+  <p>It should be rejected gracefully at the HTTP layer (wrong MIME type).</p>
+  <p>If read directly by the pipeline it should produce NO_NAME_COLUMN or EMPTY_CSV.</p>
+</body>
+</html>
