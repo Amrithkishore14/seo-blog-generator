@@ -73,8 +73,6 @@ export default defineNuxtConfig({
 
     // Route rules: Cache-Control headers for CDN/browser caching.
     routeRules: {
-      // Remove x-powered-by globally — no need to advertise the tech stack.
-      '/**': { headers: { 'x-powered-by': '' } },
       '/blog/**': {
         headers: { 'cache-control': 'public, max-age=60, stale-while-revalidate=3600' },
       },
