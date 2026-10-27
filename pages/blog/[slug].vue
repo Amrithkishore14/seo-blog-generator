@@ -233,11 +233,12 @@ const tableHeaders = computed(() => {
 
         <p class="text-gray-500 text-sm">
           Published {{ formatDate(blog.createdAt) }} · {{ blog.stats.count }} companies ·
-          <!-- amber-700 (not 600) meets WCAG AA contrast on white (#b45309 ≈ 4.6:1) -->
+          <!-- amber-700 meets WCAG AA on gray-50 (#b45309 ≈ 4.6:1) -->
+          <!-- green-700 meets WCAG AA on gray-50 (#15803d ≈ 5.2:1); green-600 fails at 3.15:1 -->
           <span v-if="blog.usedFallback" class="text-amber-700"
             >Template copy (AI unavailable)</span
           >
-          <span v-else class="text-green-600">AI-generated copy</span>
+          <span v-else class="text-green-700">AI-generated copy</span>
         </p>
       </header>
 
@@ -256,7 +257,11 @@ const tableHeaders = computed(() => {
       <section aria-label="Key statistics" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
         <div class="bg-white border border-gray-200 rounded-xl p-4">
           <p class="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">
-            Total {{ blog.stats.metricLabel }}
+            {{
+              blog.stats.metricLabel.toLowerCase().startsWith('total')
+                ? blog.stats.metricLabel
+                : `Total ${blog.stats.metricLabel}`
+            }}
           </p>
           <p class="text-2xl font-bold text-gray-900">
             {{ formatCompact(blog.stats.metricTotal, blog.stats.metricCurrency) }}
@@ -399,13 +404,23 @@ const tableHeaders = computed(() => {
                   v-for="header in tableHeaders"
                   :key="header"
                   scope="col"
-                  class="px-4 py-3 text-left font-semibold whitespace-nowrap cursor-pointer hover:bg-gray-100 select-none"
-                  @click="setSort(header)"
+                  class="px-4 py-3 text-left font-semibold whitespace-nowrap"
+                  :aria-sort="
+                    sortCol === header ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'
+                  "
                 >
-                  {{ header }}
-                  <span v-if="sortCol === header" class="ml-1">
-                    {{ sortDir === 'asc' ? '↑' : '↓' }}
-                  </span>
+                  <!-- <button> makes the header keyboard-focusable and activatable with Enter/Space -->
+                  <button
+                    type="button"
+                    class="flex items-center gap-1 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
+                    @click="setSort(header)"
+                  >
+                    {{ header }}
+                    <span aria-hidden="true" class="ml-0.5">
+                      <template v-if="sortCol === header">{{ sortDir === 'asc' ? '↑' : '↓' }}</template>
+                      <template v-else>↕</template>
+                    </span>
+                  </button>
                 </th>
               </tr>
             </thead>
