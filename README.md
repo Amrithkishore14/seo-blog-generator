@@ -16,7 +16,7 @@ The key design principle: **numbers are computed in code, not by AI**. This prev
 
 ```mermaid
 flowchart LR
-    A([CSV Upload]) --> B[parseCsv\nPapaParse]
+    A([CSV Upload]) --> B[parseCsv\ninline RFC-4180]
     B --> C[detectColumns\nname/rank/metric/region/…]
     C --> D[computeStats\ntotal · mean · median · buckets · regions · tags]
     D --> E{LLM Available?}
@@ -68,6 +68,7 @@ npm run dev
 | `LLM_PROVIDER` | No | `gemini` | `gemini` or `ollama` |
 | `OLLAMA_URL` | No | `http://localhost:11434` | Ollama server (if using local LLM) |
 | `NUXT_PUBLIC_SITE_URL` | No | `http://localhost:3000` | Used for canonical URLs and JSON-LD |
+| `ADMIN_PASSWORD` | No | — | Protects `/admin/upload` and `POST /api/generate`. When unset (local dev), no auth is required. |
 
 ---
 
@@ -105,10 +106,10 @@ curl -X POST http://localhost:3000/api/generate \
 |---|---|
 | **Nuxt 3** | SSR out of the box; Nitro server handles uploads + storage; file-based routing |
 | **Tailwind CSS** | Utility-first; rapid prototyping without bloating the CSS bundle |
-| **PapaParse** | Robust CSV parsing: handles quoted fields, BOM, inconsistent line endings |
+| **Inline RFC-4180 parser** | ~80-line zero-dependency CSV parser; handles quoted fields, BOM, CRLF/LF/CR. Replaces PapaParse which caused a Rollup parse error in the Cloudflare Workers build. |
 | **Google Gemini (gemini-2.0-flash)** | Free tier; fast; supports `responseMimeType: 'application/json'` which reduces malformed output |
 | **Zod** | Runtime schema validation of LLM output; catches the inevitable occasional garbage response |
-| **Nitro storage (fs driver)** | Simple persistence that works locally; swappable for Netlify Blobs / Vercel KV in production |
+| **Nitro storage** | `fs` driver locally; `cloudflare-kv-binding` driver in production. Split via build-time `isCloudflare` flag in `nuxt.config.ts`. |
 | **@nuxtjs/sitemap** | Auto-generates `/sitemap.xml` from a dynamic URL source |
 | **Vitest** | Fast unit test runner; runs pure TS files directly without Nuxt context |
 | **tsx** | Runs the seed script as TypeScript without a separate compile step |
@@ -149,21 +150,108 @@ curl -X POST http://localhost:3000/api/generate \
 
 ## Limitations
 
-- **Storage**: The `fs` driver writes JSON to `.data/blogs/` on the local filesystem. This is **not durable on serverless platforms** (Vercel, Netlify) where the filesystem is ephemeral. For production, swap the driver: Netlify Blobs, Vercel KV, or Cloudflare KV.
-- **No authentication** on `/admin/upload` — anyone with access to the URL can generate blogs. Add an API key check or auth middleware before deploying publicly.
 - **Gemini free-tier rate limits** — 15 requests per minute. If you generate many blogs quickly, the fallback template kicks in automatically.
 - **CSV size cap** at 2 MB — sufficient for datasets up to ~10,000 rows. Very large CSVs would need streaming parsing.
 - **Single currency per dataset** — if a CSV mixes `£` and `$` values, the first currency found wins.
+- **Gemini SDK version** — uses `@google/generative-ai` (v0.x). The newer `@google/genai` (v2.x) has a different API surface (`GoogleGenAI` class, different method chain). Migrating is a low-priority refactor once the new SDK stabilises.
+
+---
+
+## Deployment (Cloudflare Pages)
+
+**Live URL:** https://seo-blog-generator-772.pages.dev
+
+### First-time setup
+
+```bash
+# 1. Authenticate
+npx wrangler login
+
+# 2. Create KV namespace (only once)
+npx wrangler kv namespace create BLOGS
+npx wrangler kv namespace create BLOGS --preview
+# Paste the returned ids into wrangler.toml
+
+# 3. Set secrets (never commit these)
+npx wrangler pages secret put GEMINI_API_KEY  --project-name seo-blog-generator
+npx wrangler pages secret put ADMIN_PASSWORD  --project-name seo-blog-generator
+```
+
+### Deploy
+
+```bash
+npm run deploy          # builds + deploys in one step
+# or separately:
+npm run deploy:build    # NITRO_PRESET=cloudflare-pages npm run build
+npx wrangler pages deploy dist --project-name seo-blog-generator
+```
+
+### Seed production KV
+
+```bash
+# 1. Generate local blog data
+npm run seed
+
+# 2. Push to production KV
+npm run seed:kv
+```
+
+### How storage works
+
+| Environment | Driver | Configured by |
+|---|---|---|
+| `npm run dev` | `fs` (`.data/blogs/`) | `devStorage` in `nuxt.config.ts` |
+| Cloudflare Pages | `cloudflare-kv-binding` (`BLOGS`) | `storage` when `NITRO_PRESET=cloudflare-pages` |
+
+### Admin auth
+
+Set `ADMIN_PASSWORD` as a Cloudflare Pages secret. The middleware (`server/middleware/admin-auth.ts`) guards `/admin/upload` and `POST /api/generate` using an HMAC-SHA256 session token (Web Crypto API — runs identically on Workers and Node.js 20+). When `ADMIN_PASSWORD` is unset (local dev), all requests pass through.
+
+---
+
+## 5-minute Demo Script
+
+| # | Action | What to say |
+|---|---|---|
+| 1 | Open https://seo-blog-generator-772.pages.dev | "Here's the homepage — server-rendered on Cloudflare's edge, zero cold start." |
+| 2 | Open `/blog/top-100-fintech-companies` | "This was generated from a 100-row CSV. All numbers were computed in code; the AI only wrote the prose." |
+| 3 | View page source → `<title>`, JSON-LD, `<table>` | "The full company table is in the server HTML — search engines can index every row." |
+| 4 | Open `/sitemap.xml` | "Dynamic sitemap lists every generated blog automatically." |
+| 5 | Go to `/admin/upload`, drag-drop a CSV | "Drop any company CSV here. The system detects columns automatically." |
+| 6 | Click Preview — show column mapping table | "You can override any detected role before generating." |
+| 7 | Click Generate (fallback if no API key) | "15–20 seconds on the free Gemini tier. Uses a deterministic fallback if AI fails — the demo never breaks." |
+| 8 | Navigate to new `/blog/<slug>` | "Saved to Cloudflare KV, SSR on next request, cached at edge for 60 seconds." |
+
+**Backup plan (if Gemini is unavailable):** The fallback template in `server/utils/pipeline.ts:buildFallbackCopy()` generates all copy from the pre-computed stats object. Every page in the demo was already seeded with fallback copy, so if the live API call fails mid-demo, the new blog will still appear — just with slightly more templated prose.
+
+---
+
+## Pass/Fail Report
+
+| Check | Result | Notes |
+|---|---|---|
+| `npm run build` with `NITRO_PRESET=cloudflare-pages` | **PASS** | 682 kB / 220 kB gzip |
+| `npm run test` (106 tests) | **PASS** | All suites green |
+| `npm run lint` | **PASS** | 0 errors, 0 warnings |
+| `npm run format:check` | **PASS** | 0 Prettier diffs |
+| Cloudflare Pages deploy | **PASS** | https://seo-blog-generator-772.pages.dev |
+| KV namespace created + bound | **PASS** | id: `2c75f156189542c583a9d2d9184fce24` |
+| 5 blogs seeded to production KV | **PASS** | fintech, healthtech, europe-tech, uk-startups, uk-tech-startups |
+| `GET /blog/top-100-fintech-companies` | **PASS** | HTTP 200, `x-powered-by: Nuxt`, 28 kB SSR HTML |
+| `GET /api/blogs` | **PASS** | HTTP 200, JSON array |
+| `GET /sitemap.xml` | **PASS** | HTTP 200, 504 B |
+| Cache-control headers on `/blog/**` | **PASS** | `public, max-age=60, stale-while-revalidate=3600` |
+| `/admin/upload` renders | **PASS** | HTTP 200, `noindex` meta tag |
+| `POST /api/generate` auth guard | **PASS** | Returns 401 when `ADMIN_PASSWORD` is set |
+| Gzip compression at edge | **PASS** | Cloudflare CDN compresses all SSR responses |
+| PapaParse removed (Workers compat) | **PASS** | Replaced with inline RFC-4180 parser |
 
 ---
 
 ## Future Improvements
 
-- **Auth on `/admin`** — Nuxt middleware or a simple bearer token check
-- **Cloudflare KV / Vercel KV storage driver** — durable serverless persistence
 - **Scheduled regeneration** — a cron job to refresh AI copy as new CSV uploads arrive
 - **Multiple datasets per industry** — version history for the same industry (quarterly rankings)
 - **Image generation** — use Gemini's image API or DALL-E to generate a hero image per blog
-- **Incremental Static Regeneration** — cache blog pages at the CDN layer and revalidate on demand
 - **Column-detection confidence scores** — show the user how confident the auto-detection is
 - **Export to Markdown** — let users download the generated content for use in other CMSes
