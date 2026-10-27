@@ -18,10 +18,11 @@ import type { DatasetStats } from './analyseDataset'
 import { formatMoney, slugify } from './analyseDataset'
 
 // ── Zod schema for the LLM JSON response ────────────────────────────────────
-// Validate every field so we catch malformed AI output before it reaches users.
+// Limits match SEO best-practice ceilings so we catch over-length AI output
+// before it reaches users (title ≤ 60 chars, meta ≤ 155 chars).
 const CopySchema = z.object({
-  title: z.string().min(1).max(80), // <title> tag
-  metaDescription: z.string().min(1).max(160), // <meta description>
+  title: z.string().min(1).max(60), // <title> tag — keep under 60 for SERP
+  metaDescription: z.string().min(1).max(155), // <meta description> — keep under 155
   slug: z.string().regex(/^[a-z0-9-]+$/, 'Slug must be URL-safe'),
   h1: z.string().min(1), // Page heading
   intro: z.array(z.string().min(1)).length(2), // Two intro paragraphs
@@ -63,7 +64,7 @@ export interface GenerateCopyOptions {
 
 /**
  * Generate SEO blog copy using an LLM.
- * Falls back to a deterministic template if the LLM is unavailable.
+ * One retry is attempted before falling back to the deterministic template.
  */
 export async function generateCopy(
   opts: GenerateCopyOptions,
@@ -75,13 +76,16 @@ export async function generateCopy(
   const hasKey = provider === 'ollama' || Boolean(opts.geminiApiKey)
 
   if (hasKey) {
-    try {
-      const raw = await callLlm(prompt, opts)
-      const copy = parseAndValidate(raw)
-      if (copy) return { copy, usedFallback: false }
-    } catch (err) {
-      // Log to server console but don't crash — fall through to template
-      console.warn('[generateCopy] LLM call failed, using fallback:', err)
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const raw = await callLlm(prompt, opts)
+        const copy = parseAndValidate(raw)
+        if (copy) return { copy, usedFallback: false }
+        console.warn(`[generateCopy] Attempt ${attempt}: Zod validation failed — retrying`)
+      } catch (err) {
+        console.warn(`[generateCopy] Attempt ${attempt}: LLM call failed:`, err)
+        if (attempt === 2) break
+      }
     }
   } else {
     console.warn('[generateCopy] No GEMINI_API_KEY set — using fallback copy')
@@ -147,7 +151,7 @@ async function callOllama(
 
 /**
  * Parse the LLM's text output as JSON and validate against CopySchema.
- * Returns null if parsing or validation fails (triggers fallback).
+ * Returns null if parsing or validation fails (triggers retry/fallback).
  */
 function parseAndValidate(raw: string): GeneratedCopy | null {
   // Strip markdown code fences that some models add despite being told not to
@@ -169,6 +173,27 @@ function parseAndValidate(raw: string): GeneratedCopy | null {
 
   console.warn('[generateCopy] Zod validation failed:', result.error.flatten())
   return null
+}
+
+// ── Dataset trait helpers ─────────────────────────────────────────────────────
+
+/**
+ * Extract a stage label from datasetTraits, e.g. "Stage: Seed" → "Seed-stage".
+ * Returns an empty string if no stage trait is found.
+ */
+function stageLabel(traits: string[]): string {
+  const stageTrait = traits.find((t) => t.toLowerCase().startsWith('stage:'))
+  if (!stageTrait) return ''
+  const value = stageTrait.split(':')[1]?.trim() ?? ''
+  return value ? `${value}-stage` : ''
+}
+
+/**
+ * Build a stage qualifier for prose, e.g. " at the Seed stage" or "" if unknown.
+ */
+function stageQualifier(traits: string[]): string {
+  const label = stageLabel(traits)
+  return label ? ` at the ${label}` : ''
 }
 
 // ── Prompt builder ────────────────────────────────────────────────────────────
@@ -206,6 +231,18 @@ function buildPrompt(opts: GenerateCopyOptions): string {
     ? `Dataset traits (constants): ${stats.datasetTraits.join(' | ')}`
     : ''
 
+  // Build dynamic FAQ q3 based on whether we have a stage trait
+  const stage = stageLabel(stats.datasetTraits)
+  const faqQ3 = stage
+    ? `What is the average raise for a ${stage} ${industry} company?`
+    : `What is the average ${stats.metricLabel.toLowerCase()} for a ${industry} company in this dataset?`
+
+  // Build dynamic keywords — only include "stage" keyword if we know the stage
+  const stageKeyword = stage ? `${stage} ${industry}` : ''
+  const keywordsInstruction = stageKeyword
+    ? `["${industry}", "${industry} funding", "${stageKeyword}", "(4-8 total)"]`
+    : `["${industry}", "${industry} funding", "${industry} companies", "(4-8 total)"]`
+
   return `You are a professional tech-industry content writer. Write SEO blog copy for a ranking of ${industry} companies.
 
 CRITICAL RULES:
@@ -217,7 +254,7 @@ The JSON must match this exact structure:
 {
   "title": "(max 60 chars, include '${industry}' and a number)",
   "metaDescription": "(max 155 chars, compelling search-result snippet)",
-  "slug": "(URL-safe slug, e.g. 'top-fintech-seed-companies-2024')",
+  "slug": "(URL-safe slug, e.g. 'top-${slugify(industry)}-companies')",
   "h1": "(page heading — slightly different phrasing from title)",
   "intro": ["paragraph 1 (2-3 sentences)", "paragraph 2 (2-3 sentences)"],
   "sections": [
@@ -230,9 +267,9 @@ The JSON must match this exact structure:
   "faq": [
     { "q": "How much have ${industry} companies raised in total?", "a": "Answer using exact total." },
     { "q": "Which ${industry} company has raised the most?", "a": "..." },
-    { "q": "What is the average raise for a seed-stage ${industry} company?", "a": "..." }
+    { "q": "${faqQ3}", "a": "..." }
   ],
-  "keywords": ["${industry}", "${industry} funding", "seed stage ${industry}", "(4-8 total)"]
+  "keywords": ${keywordsInstruction}
 }
 
 --- DATASET STATISTICS (use ONLY these numbers) ---
@@ -268,6 +305,8 @@ Now output the JSON object:`
  *
  * All numbers come from the pre-computed stats object, so this output
  * is always accurate even though it's less varied than AI copy.
+ * Stage-specific wording (e.g. "Seed-stage") is derived from datasetTraits,
+ * not hardcoded — so this works correctly for any dataset.
  */
 export function buildFallbackCopy(opts: GenerateCopyOptions): GeneratedCopy {
   const { industry, stats } = opts
@@ -284,17 +323,37 @@ export function buildFallbackCopy(opts: GenerateCopyOptions): GeneratedCopy {
 
   const slug = slugify(`top-${stats.count}-${industry}-companies`)
 
+  // Stage qualifier derived from traits (e.g. " at the Seed stage" or "")
+  const stageQ = stageQualifier(stats.datasetTraits)
+  const stage = stageLabel(stats.datasetTraits) // e.g. "Seed-stage" or ""
+
+  // FAQ q3 wording — stage-aware
+  const faqQ3 = stage
+    ? `What is the average raise for a ${stage} ${industry} company?`
+    : `What is the average ${stats.metricLabel.toLowerCase()} for a ${industry} company in this dataset?`
+  const faqA3 = stage
+    ? `The average raise across the ${stats.count} companies${stageQ} is ${avg}, with a median of ${median}.`
+    : `The average ${stats.metricLabel.toLowerCase()} across the ${stats.count} companies is ${avg}, with a median of ${median}.`
+
+  // Keywords — only include stage keyword when we know the stage
+  const keywords: string[] = [
+    industry,
+    `${industry} funding`,
+    `${industry} companies`,
+    `top ${industry} startups`,
+  ]
+  if (stage) keywords.splice(2, 0, `${stage} ${industry}`)
+
   return {
     title: `Top ${stats.count} ${industry} Companies by ${stats.metricLabel}`.slice(0, 60),
-    metaDescription:
-      `Explore the top ${stats.count} ${industry} companies ranked by ${stats.metricLabel.toLowerCase()}. Collectively they have raised ${total} at the seed stage.`.slice(
-        0,
-        155,
-      ),
+    metaDescription: `Explore the top ${stats.count} ${industry} companies ranked by ${stats.metricLabel.toLowerCase()}. Collectively they have raised ${total}${stageQ}.`.slice(
+      0,
+      155,
+    ),
     slug,
     h1: `The ${stats.count} Best-Funded ${industry} Companies`,
     intro: [
-      `This analysis covers ${stats.count} ${industry} companies at the seed stage, which have collectively raised ${total} in funding. The dataset spans ${stats.regionBreakdown.length} distinct region${stats.regionBreakdown.length !== 1 ? 's' : ''}.`,
+      `This analysis covers ${stats.count} ${industry} companies${stageQ}, which have collectively raised ${total} in funding. The dataset spans ${stats.regionBreakdown.length} distinct region${stats.regionBreakdown.length !== 1 ? 's' : ''}.`,
       `${stats.topCompany} leads the ranking with ${maxRaise}, whilst the average raise across the dataset is ${avg} and the median is ${median}. The top ten companies account for ${stats.top10Share.toFixed(1)}% of total funding.`,
     ],
     sections: [
@@ -310,11 +369,11 @@ export function buildFallbackCopy(opts: GenerateCopyOptions): GeneratedCopy {
         heading: `What They're Building`,
         body: topTags
           ? `The most common sector tags across the dataset are: ${topTags}. These themes reflect the core technological and commercial focus of the current ${industry} cohort.`
-          : `The companies span a wide variety of sub-sectors within ${industry}, reflecting the breadth of innovation at the seed stage.`,
+          : `The companies span a wide variety of sub-sectors within ${industry}, reflecting the breadth of innovation${stageQ}.`,
       },
       {
         heading: 'Trends to Watch',
-        body: `With ${stats.count} companies at the seed stage raising a combined ${total}, the ${industry} sector is demonstrating strong investor appetite. The concentration of activity in ${topRegion} underscores the importance of established tech ecosystems, whilst the median raise of ${median} suggests most founders are securing meaningful capital without relying on outlier rounds.`,
+        body: `With ${stats.count} companies${stageQ} raising a combined ${total}, the ${industry} sector is demonstrating strong investor appetite. The concentration of activity in ${topRegion} underscores the importance of established tech ecosystems, whilst the median raise of ${median} suggests most founders are securing meaningful capital without relying on outlier rounds.`,
       },
     ],
     insights: [
@@ -339,16 +398,10 @@ export function buildFallbackCopy(opts: GenerateCopyOptions): GeneratedCopy {
         a: `${stats.topCompany} leads the ranking with ${maxRaise} in total funding raised.`,
       },
       {
-        q: `What is the average raise for a seed-stage ${industry} company?`,
-        a: `The average raise across the ${stats.count} companies is ${avg}, with a median of ${median}.`,
+        q: faqQ3,
+        a: faqA3,
       },
     ],
-    keywords: [
-      industry,
-      `${industry} funding`,
-      `${industry} companies`,
-      `seed stage ${industry}`,
-      `top ${industry} startups`,
-    ],
+    keywords,
   }
 }
