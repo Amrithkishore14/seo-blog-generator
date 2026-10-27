@@ -17,6 +17,11 @@ import { z } from 'zod'
 import type { DatasetStats } from './analyseDataset'
 import { formatMoney, slugify } from './analyseDataset'
 
+/** Title-case a string: "fintech" → "Fintech", "AI healthcare" → "AI Healthcare" */
+function titleCase(s: string): string {
+  return s.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1))
+}
+
 // ── Zod schema for the LLM JSON response ────────────────────────────────────
 // Limits match SEO best-practice ceilings so we catch over-length AI output
 // before it reaches users (title ≤ 60 chars, meta ≤ 155 chars).
@@ -110,7 +115,7 @@ async function callGemini(prompt: string, apiKey: string): Promise<string> {
   const genAI = new GoogleGenerativeAI(apiKey)
   // gemini-2.0-flash is the current free-tier fast model
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash',
     generationConfig: {
       // Force the model to output JSON — reduces malformed responses
       responseMimeType: 'application/json',
@@ -150,8 +155,14 @@ async function callOllama(
 // ── JSON parsing + Zod validation ────────────────────────────────────────────
 
 /**
- * Parse the LLM's text output as JSON and validate against CopySchema.
- * Returns null if parsing or validation fails (triggers retry/fallback).
+ * Parse the LLM's text output as JSON, apply field-level sanitisation, then
+ * validate against CopySchema. Returns null only on hard failures.
+ *
+ * Why sanitise before validating?
+ *   Models consistently return metaDescriptions that are 1-10 chars over the
+ *   155-char SEO limit despite the explicit instruction. Rather than retrying
+ *   (or falling back entirely) for a trivially fixable overshoot, we trim at
+ *   the last word boundary and preserve the AI copy.
  */
 function parseAndValidate(raw: string): GeneratedCopy | null {
   // Strip markdown code fences that some models add despite being told not to
@@ -168,6 +179,19 @@ function parseAndValidate(raw: string): GeneratedCopy | null {
     return null
   }
 
+  // Sanitise known fixable overruns before schema validation
+  if (parsed !== null && typeof parsed === 'object') {
+    const obj = parsed as Record<string, unknown>
+    // Trim title to 60 chars at word boundary
+    if (typeof obj.title === 'string' && obj.title.length > 60) {
+      obj.title = obj.title.slice(0, 57).replace(/\s+\S*$/, '') + '…'
+    }
+    // Trim metaDescription to 155 chars at word boundary
+    if (typeof obj.metaDescription === 'string' && obj.metaDescription.length > 155) {
+      obj.metaDescription = obj.metaDescription.slice(0, 152).replace(/\s+\S*$/, '') + '…'
+    }
+  }
+
   const result = CopySchema.safeParse(parsed)
   if (result.success) return result.data
 
@@ -178,22 +202,31 @@ function parseAndValidate(raw: string): GeneratedCopy | null {
 // ── Dataset trait helpers ─────────────────────────────────────────────────────
 
 /**
- * Extract a stage label from datasetTraits, e.g. "Stage: Seed" → "Seed-stage".
+ * Extract a stage value from datasetTraits, e.g. "Stage: Seed" → "seed".
  * Returns an empty string if no stage trait is found.
  */
-function stageLabel(traits: string[]): string {
+function stageValue(traits: string[]): string {
   const stageTrait = traits.find((t) => t.toLowerCase().startsWith('stage:'))
   if (!stageTrait) return ''
-  const value = stageTrait.split(':')[1]?.trim() ?? ''
-  return value ? `${value}-stage` : ''
+  return stageTrait.split(':')[1]?.trim().toLowerCase() ?? ''
 }
 
 /**
- * Build a stage qualifier for prose, e.g. " at the Seed stage" or "" if unknown.
+ * A display label for keywords/titles, e.g. "seed-stage".
+ * Returns empty string when no stage trait is present.
+ */
+function stageLabel(traits: string[]): string {
+  const val = stageValue(traits)
+  return val ? `${val}-stage` : ''
+}
+
+/**
+ * Build a stage qualifier for prose, e.g. " at seed stage" or "" if unknown.
+ * Lowercase and without "the" — reads naturally: "companies at seed stage".
  */
 function stageQualifier(traits: string[]): string {
-  const label = stageLabel(traits)
-  return label ? ` at the ${label}` : ''
+  const val = stageValue(traits)
+  return val ? ` at ${val} stage` : ''
 }
 
 // ── Prompt builder ────────────────────────────────────────────────────────────
@@ -205,7 +238,8 @@ function stageQualifier(traits: string[]): string {
  * any figures. This is the key accuracy guarantee of the system.
  */
 function buildPrompt(opts: GenerateCopyOptions): string {
-  const { industry, stats } = opts
+  const { stats } = opts
+  const industry = titleCase(opts.industry)
 
   const regionLines = stats.regionBreakdown
     .slice(0, 5)
@@ -309,7 +343,8 @@ Now output the JSON object:`
  * not hardcoded — so this works correctly for any dataset.
  */
 export function buildFallbackCopy(opts: GenerateCopyOptions): GeneratedCopy {
-  const { industry, stats } = opts
+  const { stats } = opts
+  const industry = titleCase(opts.industry)
   const cur = stats.metricCurrency
   const total = formatMoney(stats.metricTotal, cur, true)
   const avg = formatMoney(stats.metricMean, cur, true)
