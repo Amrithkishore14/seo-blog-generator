@@ -1,0 +1,26 @@
+# Environment — contains secrets, never commit
+.env
+.env.local
+.env.*.local
+
+# Generated blog data — large binary/JSON, not source code
+.data/
+
+# Nuxt build artefacts
+.nuxt/
+.output/
+dist/
+
+# Node modules
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+.idea/
+
+# Test coverage
+coverage/
