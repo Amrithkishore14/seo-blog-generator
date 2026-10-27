@@ -2,6 +2,10 @@
 // Central configuration for the Nuxt 3 application.
 // See https://nuxt.com/docs/api/configuration/nuxt-config
 
+// When NITRO_PRESET=cloudflare-pages, production storage switches to Cloudflare KV.
+// Local dev always uses the fs driver regardless of this flag.
+const isCloudflare = (process.env.NITRO_PRESET ?? '').includes('cloudflare')
+
 export default defineNuxtConfig({
   devtools: { enabled: true },
 
@@ -37,6 +41,8 @@ export default defineNuxtConfig({
     geminiApiKey: process.env.GEMINI_API_KEY ?? '', // secret — stays on server
     llmProvider: process.env.LLM_PROVIDER ?? 'gemini', // 'gemini' | 'ollama'
     ollamaUrl: process.env.OLLAMA_URL ?? 'http://localhost:11434',
+    // Empty string = no auth required (local dev). Set via Cloudflare secret in production.
+    adminPassword: process.env.ADMIN_PASSWORD ?? '',
 
     public: {
       siteUrl: process.env.NUXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
@@ -44,31 +50,33 @@ export default defineNuxtConfig({
   },
 
   // ── Nitro (server engine) ────────────────────────────────────────────────────
-  // Register a named storage bucket called "blogs".
-  // The `fs` driver persists JSON files to ./.data/blogs/ on disk.
-  // In production on serverless platforms, swap the driver for
-  // Netlify Blobs, Vercel KV, or Cloudflare KV.
   nitro: {
-    storage: {
-      blogs: {
-        driver: 'fs',
-        base: './.data/blogs',
-      },
+    // Storage split: Cloudflare KV in production builds, fs on disk everywhere else.
+    //
+    //   nuxt dev                                → devStorage → fs (.data/blogs/)
+    //   nuxt build (no preset)                  → storage    → fs (.data/blogs/)
+    //   NITRO_PRESET=cloudflare-pages nuxt build → storage    → Cloudflare KV (binding: BLOGS)
+    //
+    // The KV binding name "BLOGS" must match wrangler.toml [[kv_namespaces]] binding.
+    storage: isCloudflare
+      ? { blogs: { driver: 'cloudflare-kv-binding', binding: 'BLOGS' } }
+      : { blogs: { driver: 'fs', base: './.data/blogs' } },
+
+    // devStorage overrides storage during `nuxt dev` only — always fs so local
+    // development requires no Cloudflare account.
+    devStorage: {
+      blogs: { driver: 'fs', base: './.data/blogs' },
     },
 
     // Pre-compress public static assets (JS/CSS chunks) at build time.
-    // The node-server preset will serve the .gz versions automatically when
-    // the client sends Accept-Encoding: gzip.
     compressPublicAssets: { gzip: true, brotli: true },
 
-    // Route rules: add Cache-Control headers so CDN/browser can cache blog pages.
-    // We deliberately avoid `swr:` here — Nitro's SWR proxy serves cached HTML
-    // via sendStream which bypasses the compression middleware's res.write hooks.
+    // Route rules: Cache-Control headers for CDN/browser caching.
     routeRules: {
+      // Remove x-powered-by globally — no need to advertise the tech stack.
+      '/**': { headers: { 'x-powered-by': '' } },
       '/blog/**': {
-        headers: {
-          'cache-control': 'public, max-age=60, stale-while-revalidate=3600',
-        },
+        headers: { 'cache-control': 'public, max-age=60, stale-while-revalidate=3600' },
       },
       '/api/blogs/**': {
         headers: { 'cache-control': 'public, max-age=60, stale-while-revalidate=3600' },
@@ -81,7 +89,18 @@ export default defineNuxtConfig({
   app: {
     head: {
       htmlAttrs: { lang: 'en-GB' },
-      meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }],
+      meta: [
+        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        // Default og:image — individual blog pages override this via useSeoMeta.
+        {
+          property: 'og:image',
+          content: `${process.env.NUXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'}/og-image.svg`,
+        },
+        {
+          name: 'twitter:image',
+          content: `${process.env.NUXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'}/og-image.svg`,
+        },
+      ],
     },
   },
 

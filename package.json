@@ -11,6 +11,10 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "seed": "node --env-file=.env --import tsx/esm scripts/seed.ts",
+    "seed:kv": "bash scripts/seed-kv.sh",
+    "seed:kv:preview": "bash scripts/seed-kv.sh --preview",
+    "deploy:build": "NUXT_PUBLIC_SITE_URL=https://seo-blog-generator-772.pages.dev NITRO_PRESET=cloudflare-pages npm run build",
+    "deploy": "npm run deploy:build && wrangler pages deploy dist --project-name seo-blog-generator",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint server/ pages/ tests/ scripts/ nuxt.config.ts",
@@ -20,7 +24,6 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
-    "papaparse": "^5.4.1",
     "unstorage": "^1.13.0",
     "zod": "^3.23.8"
   },
@@ -28,7 +31,6 @@
     "@nuxt/eslint": "^1.17.0",
     "@nuxtjs/sitemap": "^5.3.0",
     "@nuxtjs/tailwindcss": "^6.12.0",
-    "@types/papaparse": "^5.3.14",
     "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",
     "nuxt": "^3.13.2",
@@ -38,6 +40,7 @@
     "typescript": "^5.6.3",
     "vitest": "^2.1.4",
     "vue": "^3.5.12",
-    "vue-router": "^4.4.5"
+    "vue-router": "^4.4.5",
+    "wrangler": "^4.154.0"
   }
 }
