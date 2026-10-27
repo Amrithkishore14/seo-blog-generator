@@ -687,4 +687,73 @@ describe('buildFallbackCopy', () => {
     const totalFaq = result.faq.find((f) => f.q.toLowerCase().includes('total'))
     expect(totalFaq?.a).toContain('50,000,000')
   })
+
+  it('includes "Seed-stage" in keywords when datasetTraits contains Stage: Seed', () => {
+    expect(result.keywords.some((k) => k.toLowerCase().includes('seed'))).toBe(true)
+  })
+})
+
+// ── buildFallbackCopy — non-seed dataset ──────────────────────────────────────
+// Proves that no "seed" wording leaks into datasets that have no stage trait.
+
+describe('buildFallbackCopy — non-seed dataset', () => {
+  const nonSeedStats = {
+    count: 20,
+    metricTotal: 200_000_000,
+    metricMean: 10_000_000,
+    metricMedian: 8_000_000,
+    metricMin: 2_000_000,
+    metricMax: 40_000_000,
+    metricCurrency: '$',
+    topCompany: 'Beta Inc',
+    gapTop1Top2: 5_000_000,
+    top10Share: 80,
+    regionBreakdown: [{ region: 'New York', count: 10, total: 120_000_000, share: 60 }],
+    sizeBandBreakdown: [],
+    stageBreakdown: [],
+    topCategories: [{ tag: 'SaaS', count: 8 }],
+    fundingBuckets: [],
+    datasetTraits: [], // No stage trait — could be any stage or undetermined
+    metricLabel: 'Revenue',
+    nameLabel: 'Company',
+  }
+
+  const nonSeedResult = buildFallbackCopy({
+    industry: 'Enterprise Software',
+    stats: nonSeedStats,
+    top10: [],
+  })
+
+  it('produces no "seed" wording in title', () => {
+    expect(nonSeedResult.title.toLowerCase()).not.toContain('seed')
+  })
+
+  it('produces no "seed" wording in metaDescription', () => {
+    expect(nonSeedResult.metaDescription.toLowerCase()).not.toContain('seed')
+  })
+
+  it('produces no "seed" wording in any FAQ question', () => {
+    nonSeedResult.faq.forEach((item) => {
+      expect(item.q.toLowerCase()).not.toContain('seed')
+      expect(item.a.toLowerCase()).not.toContain('seed')
+    })
+  })
+
+  it('produces no "seed" wording in intro paragraphs', () => {
+    nonSeedResult.intro.forEach((para) => {
+      expect(para.toLowerCase()).not.toContain('seed')
+    })
+  })
+
+  it('produces no "seed" keyword', () => {
+    expect(nonSeedResult.keywords.some((k) => k.toLowerCase().includes('seed'))).toBe(false)
+  })
+
+  it('still produces a valid slug', () => {
+    expect(nonSeedResult.slug).toMatch(/^[a-z0-9-]+$/)
+  })
+
+  it('still produces a title ≤ 60 characters', () => {
+    expect(nonSeedResult.title.length).toBeLessThanOrEqual(60)
+  })
 })
