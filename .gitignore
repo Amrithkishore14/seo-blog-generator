@@ -17,6 +17,9 @@ dist/
 # Private demo notes (not for the repo)
 DEMO_NOTES.md
 
+# Local Claude Code instructions (not for the repo)
+CLAUDE.local.md
+
 # Node modules
 node_modules/
 

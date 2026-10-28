@@ -23,7 +23,7 @@ flowchart LR
     E -- Yes --> F[Gemini / Ollama\nstrictly JSON prompt]
     E -- No --> G[Deterministic\nfallback template]
     F --> H{Zod valid?}
-    H -- Yes --> I[BlogEntry saved\nto .data/blogs/]
+    H -- Yes --> I[BlogEntry saved\nlocal files in dev · Cloudflare KV in prod]
     H -- No, retry --> F
     H -- Fail --> G
     G --> I
@@ -43,6 +43,7 @@ flowchart LR
 
 ```bash
 # clone and install
+git clone https://github.com/Amrithkishore14/seo-blog-generator.git
 cd seo-blog-generator
 npm install
 
