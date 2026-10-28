@@ -22,9 +22,11 @@ import { computeSessionToken } from '../utils/auth'
 export default defineEventHandler(async (event) => {
   const path = getRequestURL(event).pathname
 
-  // Only guard admin pages and the blog-generation endpoint
+  // Guard admin pages and the blog-generation/preview endpoints
   const isProtected =
-    (path.startsWith('/admin/') && path !== '/admin/login') || path === '/api/generate'
+    (path.startsWith('/admin/') && path !== '/admin/login') ||
+    path === '/api/generate' ||
+    path === '/api/preview'
 
   if (!isProtected) return
 
