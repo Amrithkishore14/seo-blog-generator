@@ -98,7 +98,7 @@ function setupGeminiMock(flashBehaviour: 'ok' | '429', liteBehaviour: 'ok' | '42
           generateContent: vi.fn().mockImplementation(async () => {
             const is429 =
               (model === 'gemini-2.5-flash' && flashBehaviour === '429') ||
-              (model === 'gemini-2.5-flash-lite' && liteBehaviour === '429')
+              (model === 'gemini-3.5-flash-lite' && liteBehaviour === '429')
             if (is429) throw new Error('429 Too Many Requests: quota exceeded')
             return { response: { text: () => validLiteCopyJson(count) } }
           }),

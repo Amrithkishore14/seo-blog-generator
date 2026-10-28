@@ -146,11 +146,11 @@ async function callLlm(prompt: string, opts: GenerateCopyOptions): Promise<strin
  *
  * Retry strategy on quota errors (HTTP 429):
  *   1. Try gemini-2.5-flash (primary model)
- *   2. On 429 → retry with gemini-2.5-flash-lite (lighter free-tier model)
+ *   2. On 429 → retry with gemini-3.5-flash-lite (lighter free-tier model)
  *   3. On any other error, or if the lite model also fails → throw
  */
 async function callGemini(prompt: string, apiKey: string): Promise<string> {
-  const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite']
+  const modelsToTry = ['gemini-2.5-flash', 'gemini-3.5-flash-lite']
   let lastErr: unknown
 
   for (const modelName of modelsToTry) {

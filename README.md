@@ -117,7 +117,7 @@ npm run format:check  # Prettier dry-run
 | **Nuxt 3** | SSR out of the box; Nitro server handles uploads + storage; file-based routing |
 | **Tailwind CSS** | Utility-first; rapid prototyping without bloating the CSS bundle |
 | **Inline RFC-4180 parser** | ~80-line zero-dependency CSV parser; handles quoted fields, BOM, CRLF/LF/CR. Replaces PapaParse which caused a Rollup parse error in the Cloudflare Workers build. |
-| **Google Gemini (gemini-2.5-flash)** | Free tier; fast; supports `responseMimeType: 'application/json'` which reduces malformed output. Falls back to `gemini-2.5-flash-lite` on quota errors (HTTP 429). |
+| **Google Gemini (gemini-2.5-flash)** | Free tier; fast; supports `responseMimeType: 'application/json'` which reduces malformed output. Falls back to `gemini-3.5-flash-lite` on quota errors (HTTP 429). |
 | **Zod** | Runtime schema validation of LLM output; catches the inevitable occasional garbage response |
 | **Nitro storage** | `fs` driver locally; `cloudflare-kv-binding` driver in production. Split via build-time `isCloudflare` flag in `nuxt.config.ts`. |
 | **@nuxtjs/sitemap** | Auto-generates `/sitemap.xml` from a dynamic URL source |
@@ -147,7 +147,7 @@ npm run format:check  # Prettier dry-run
 3. **Zod schema validation** — the LLM response is parsed and validated against a strict schema. If it fails, a single retry is attempted.
 4. **Post-validation number guard** — after Zod passes, every integer in the title, h1, and meta description is checked against `stats.count`. If the AI hallucinated "Top 10" for a 100-row dataset, those fields are replaced with the deterministic fallback values.
 5. **Deterministic fallback** — if the LLM fails (invalid JSON, rate limit, missing API key), `buildFallbackCopy()` generates template-based copy entirely from the `stats` object. The demo never breaks.
-6. **Quota resilience** — on HTTP 429 from `gemini-2.5-flash`, the system retries automatically with `gemini-2.5-flash-lite` before falling back to the template.
+6. **Quota resilience** — on HTTP 429 from `gemini-2.5-flash`, the system retries automatically with `gemini-3.5-flash-lite` before falling back to the template.
 
 ---
 
@@ -169,7 +169,7 @@ If I continued developing the project, I would focus on improving column-detecti
 
 ## Limitations
 
-- **Gemini free-tier rate limits** — 20 requests per day on the free tier. On quota exhaustion the system automatically retries with `gemini-2.5-flash-lite`, then falls back to the deterministic template.
+- **Gemini free-tier rate limits** — 20 requests per day on the free tier. On quota exhaustion the system automatically retries with `gemini-3.5-flash-lite`, then falls back to the deterministic template.
 - **CSV size cap** at 2 MB — sufficient for datasets up to ~10,000 rows. Very large CSVs would need streaming parsing.
 - **Single currency per dataset** — if a CSV mixes `£` and `$` values, the first currency found wins.
 - **Gemini SDK version** — uses `@google/generative-ai` (v0.x). The newer `@google/genai` (v2.x) has a different API surface. Migrating is a low-priority refactor once the new SDK stabilises.
