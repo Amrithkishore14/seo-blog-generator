@@ -42,16 +42,18 @@ async function main() {
     driver: fsDriver({ base: STORAGE_BASE }),
   })
 
-  // Configuration: pull from process.env (loaded via --env-file=.env)
+  // Configuration: pull from process.env (loaded via --env-file=.env).
+  // Accept both NUXT_GEMINI_API_KEY (preferred) and GEMINI_API_KEY (legacy).
   const config = {
-    geminiApiKey: process.env.GEMINI_API_KEY,
-    llmProvider: (process.env.LLM_PROVIDER ?? 'gemini') as 'gemini' | 'ollama',
-    ollamaUrl: process.env.OLLAMA_URL ?? 'http://localhost:11434',
+    geminiApiKey: process.env.NUXT_GEMINI_API_KEY ?? process.env.GEMINI_API_KEY,
+    llmProvider: (process.env.NUXT_LLM_PROVIDER ?? process.env.LLM_PROVIDER ?? 'gemini') as
+      'gemini' | 'ollama',
+    ollamaUrl: process.env.NUXT_OLLAMA_URL ?? process.env.OLLAMA_URL ?? 'http://localhost:11434',
   }
 
   if (!config.geminiApiKey) {
     console.warn(
-      '⚠   GEMINI_API_KEY is not set — blogs will be generated with the fallback template.\n' +
+      '⚠   NUXT_GEMINI_API_KEY is not set — blogs will be generated with the fallback template.\n' +
         '    Copy .env.example to .env and add your key to get AI-generated copy.\n',
     )
   }

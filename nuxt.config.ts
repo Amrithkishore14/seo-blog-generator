@@ -38,11 +38,16 @@ export default defineNuxtConfig({
   // Keys under the top-level object are SERVER-ONLY (never sent to the browser).
   // Keys under `public` are shared with the client bundle.
   runtimeConfig: {
-    geminiApiKey: process.env.GEMINI_API_KEY ?? '', // secret — stays on server
-    llmProvider: process.env.LLM_PROVIDER ?? 'gemini', // 'gemini' | 'ollama'
-    ollamaUrl: process.env.OLLAMA_URL ?? 'http://localhost:11434',
-    // Empty string = no auth required (local dev). Set via Cloudflare secret in production.
-    adminPassword: process.env.ADMIN_PASSWORD ?? '',
+    // Secrets: never read process.env.* here — values baked at build time won't reach Workers.
+    // Nuxt overrides each key at runtime from the matching NUXT_<SCREAMING_SNAKE> env var:
+    //   geminiApiKey  ← NUXT_GEMINI_API_KEY
+    //   adminPassword ← NUXT_ADMIN_PASSWORD
+    //   llmProvider   ← NUXT_LLM_PROVIDER
+    //   ollamaUrl     ← NUXT_OLLAMA_URL
+    geminiApiKey: '',
+    llmProvider: 'gemini',
+    ollamaUrl: 'http://localhost:11434',
+    adminPassword: '',
 
     public: {
       siteUrl: process.env.NUXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
