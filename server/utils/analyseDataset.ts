@@ -316,9 +316,7 @@ function classifyColumnRole(header: string, type: ColumnType, _samples: string[]
   // 'funding round' contains 'funding' which would otherwise match the metric regex.
   if (
     /^(stage|round|series|phase)$/.test(h) ||
-    /funding.round|investment.stage|funding stage/i.test(h) ||
-    h === 'stage' ||
-    h === 'round'
+    /funding.round|investment.stage|funding stage|latest.round/i.test(h)
   )
     return 'stage'
 
@@ -438,6 +436,14 @@ export function computeStats(rows: Record<string, string>[], roles: ColumnRoles)
         if (!isNaN(amount)) metricRows.push({ row, amount })
       }
     }
+  }
+
+  // Infer currency from the metric column header when values carry no symbol
+  if (!currency && metricCol) {
+    const mh = metricCol.header
+    if (/\(USD\)|USD|\$/i.test(mh)) currency = '$'
+    else if (/\(EUR\)|EUR|€/i.test(mh)) currency = '€'
+    else if (/\(GBP\)|GBP|£/i.test(mh)) currency = '£'
   }
 
   // Sort descending so index 0 is the top company

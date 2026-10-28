@@ -126,6 +126,24 @@ export async function runPipeline(
   // Step 3: Compute stats ──────────────────────────────────────────────────────
   const stats = computeStats(rows, columns)
 
+  // Step 3.5: Sort rows by metric descending (blanks last); inject computed Rank if needed
+  const metricHeaderForSort =
+    Object.values(columns).find((c) => c.role === 'metric')?.header ?? null
+  rows = [...rows].sort((a, b) => {
+    const aRaw = metricHeaderForSort ? (a[metricHeaderForSort] ?? '') : ''
+    const bRaw = metricHeaderForSort ? (b[metricHeaderForSort] ?? '') : ''
+    const aBlank = !aRaw.trim()
+    const bBlank = !bRaw.trim()
+    if (aBlank && bBlank) return 0
+    if (aBlank) return 1
+    if (bBlank) return -1
+    return parseMetricValue(bRaw) - parseMetricValue(aRaw)
+  })
+  if (!Object.values(columns).some((c) => c.role === 'rank')) {
+    rows = rows.map((row, i) => ({ ...row, Rank: String(i + 1) }))
+    columns['Rank'] = { header: 'Rank', role: 'rank', type: 'number' }
+  }
+
   // Step 4: Build top-10 rows for the AI prompt ────────────────────────────────
   const nameHeader = Object.values(columns).find((c) => c.role === 'name')?.header ?? headers[0]
   const rankHeader = Object.values(columns).find((c) => c.role === 'rank')?.header ?? null
@@ -169,7 +187,9 @@ export async function runPipeline(
   })
 
   // Step 6: Build the BlogEntry document ───────────────────────────────────────
-  const slug = copy.slug || slugify(`${industry}-companies`)
+  // Slug is always generated deterministically so the same CSV always produces
+  // the same URL regardless of what the LLM returns.
+  const slug = slugify(`top-${stats.count}-${industry}-companies`)
   const createdAt = new Date().toISOString()
 
   return {
