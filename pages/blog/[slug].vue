@@ -16,6 +16,7 @@
  */
 
 import type { BlogEntry } from '../../server/utils/pipeline'
+import { formatMetricCell } from '../../server/utils/formatMetricCell'
 
 const route = useRoute()
 const config = useRuntimeConfig()
@@ -189,24 +190,6 @@ function formatCompact(amount: number, currency: string): string {
   if (amount >= 1_000_000) return `${currency}${(amount / 1_000_000).toFixed(1)}m`
   if (amount >= 1_000) return `${currency}${(amount / 1_000).toFixed(0)}k`
   return `${currency}${amount.toLocaleString('en-GB')}`
-}
-
-/**
- * Format a raw metric cell value for display in the table.
- * - Values already carrying a currency symbol or compact suffix (e.g. "£3.2m")
- *   are returned as-is.
- * - Plain integers (e.g. "14200000") are formatted with currency + thousands
- *   separators: "€14,200,000".
- * - Blank cells return an em-dash.
- */
-function formatMetricCell(raw: string, currency: string): string {
-  if (!raw || !raw.trim()) return '—'
-  // Already formatted (has a currency symbol or a compact suffix)
-  if (/[£$€]/.test(raw) || /[kmbn]$/i.test(raw.trim())) return raw
-  // Parse plain number (strip commas / whitespace that might already be there)
-  const n = Number(raw.replace(/[,\s]/g, ''))
-  if (!isFinite(n) || isNaN(n)) return raw
-  return `${currency}${n.toLocaleString('en-GB')}`
 }
 
 // Percentage for CSS bar chart widths (clamped to 0–100)

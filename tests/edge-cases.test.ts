@@ -27,6 +27,7 @@ import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { runPipeline, PipelineError } from '../server/utils/pipeline'
 import { formatMoney } from '../server/utils/analyseDataset'
+import { formatMetricCell } from '../server/utils/formatMetricCell'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const TEST_DIR = resolve(__dirname, '..', 'data', 'test-cases')
@@ -473,5 +474,41 @@ describe('Case 15 — plain integer metric cells + formatMoney display', () => {
 
   it('formatMoney(9800000, "€") returns "€9,800,000"', () => {
     expect(formatMoney(9_800_000, '€')).toBe('€9,800,000')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Case 16: formatMetricCell — currency-prefixed integers without separators
+// Reproduces the healthtech bug where "$15400000" was displayed as-is.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Case 16 — formatMetricCell table display formatting', () => {
+  it('formats a plain integer with the supplied currency symbol', () => {
+    expect(formatMetricCell('14200000', '€')).toBe('€14,200,000')
+  })
+
+  it('formats a $-prefixed integer that lacks thousands separators', () => {
+    expect(formatMetricCell('$15400000', '$')).toBe('$15,400,000')
+  })
+
+  it('formats a £-prefixed integer that lacks thousands separators', () => {
+    expect(formatMetricCell('£30314247', '£')).toBe('£30,314,247')
+  })
+
+  it('re-formats an already-separated value consistently', () => {
+    expect(formatMetricCell('£30,314,247', '£')).toBe('£30,314,247')
+  })
+
+  it('returns an em-dash for blank input', () => {
+    expect(formatMetricCell('', '$')).toBe('—')
+    expect(formatMetricCell('   ', '$')).toBe('—')
+  })
+
+  it('leaves compact-suffix values unchanged', () => {
+    expect(formatMetricCell('£3.2m', '£')).toBe('£3.2m')
+    expect(formatMetricCell('$500k', '$')).toBe('$500k')
+  })
+
+  it('returns non-numeric strings unchanged', () => {
+    expect(formatMetricCell('N/A', '$')).toBe('N/A')
   })
 })
