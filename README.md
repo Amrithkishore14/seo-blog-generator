@@ -100,6 +100,16 @@ curl -X POST http://localhost:3000/api/generate \
 
 ---
 
+## Run Tests
+
+```bash
+npm test          # run the full Vitest suite (137 tests)
+npm run lint      # ESLint
+npm run format:check  # Prettier dry-run
+```
+
+---
+
 ## Tools Used and Why
 
 | Tool | Why |
@@ -107,13 +117,13 @@ curl -X POST http://localhost:3000/api/generate \
 | **Nuxt 3** | SSR out of the box; Nitro server handles uploads + storage; file-based routing |
 | **Tailwind CSS** | Utility-first; rapid prototyping without bloating the CSS bundle |
 | **Inline RFC-4180 parser** | ~80-line zero-dependency CSV parser; handles quoted fields, BOM, CRLF/LF/CR. Replaces PapaParse which caused a Rollup parse error in the Cloudflare Workers build. |
-| **Google Gemini (gemini-2.0-flash)** | Free tier; fast; supports `responseMimeType: 'application/json'` which reduces malformed output |
+| **Google Gemini (gemini-2.5-flash)** | Free tier; fast; supports `responseMimeType: 'application/json'` which reduces malformed output. Falls back to `gemini-2.5-flash-lite` on quota errors (HTTP 429). |
 | **Zod** | Runtime schema validation of LLM output; catches the inevitable occasional garbage response |
 | **Nitro storage** | `fs` driver locally; `cloudflare-kv-binding` driver in production. Split via build-time `isCloudflare` flag in `nuxt.config.ts`. |
 | **@nuxtjs/sitemap** | Auto-generates `/sitemap.xml` from a dynamic URL source |
 | **Vitest** | Fast unit test runner; runs pure TS files directly without Nuxt context |
 | **tsx** | Runs the seed script as TypeScript without a separate compile step |
-| **Claude Code** | AI coding assistant (by Anthropic) used throughout development — generating, debugging, and iterating on all code in this repository |
+| **Claude Code** | AI coding assistant (Anthropic) used for iterative development and test writing |
 
 ---
 
@@ -135,26 +145,34 @@ curl -X POST http://localhost:3000/api/generate \
 1. **Numbers computed in code** — `computeStats()` in `analyseDataset.ts` calculates every figure. The LLM never sees raw data, only the pre-computed results.
 2. **Explicit instruction in prompt** — "Use ONLY the numbers provided. Do NOT invent, round, or approximate any figures."
 3. **Zod schema validation** — the LLM response is parsed and validated against a strict schema. If it fails, a single retry is attempted.
-4. **Deterministic fallback** — if the LLM fails (invalid JSON, rate limit, missing API key), `buildFallbackCopy()` generates template-based copy entirely from the `stats` object. The demo never breaks.
+4. **Post-validation number guard** — after Zod passes, every integer in the title, h1, and meta description is checked against `stats.count`. If the AI hallucinated "Top 10" for a 100-row dataset, those fields are replaced with the deterministic fallback values.
+5. **Deterministic fallback** — if the LLM fails (invalid JSON, rate limit, missing API key), `buildFallbackCopy()` generates template-based copy entirely from the `stats` object. The demo never breaks.
+6. **Quota resilience** — on HTTP 429 from `gemini-2.5-flash`, the system retries automatically with `gemini-2.5-flash-lite` before falling back to the template.
 
 ---
 
 ## My Approach
 
-<!-- TODO: Fill this in with your own words before the interview -->
+I approached this project by focusing on three things: making the blog generation process reusable, keeping the statistics accurate, and ensuring the generated pages are SEO friendly.
 
-- ...
-- ...
-- ...
+I started by building a CSV processing workflow that identifies important columns, such as company names, funding amounts and locations. I wanted the application to work with different datasets rather than being limited to fintech.
+
+I kept the statistical calculations separate from AI content generation. The application calculates the statistics directly from the dataset and then uses an LLM to help write the blog content. This makes the numerical results more reliable while allowing the content to read naturally.
+
+I also added a fallback template so the application can generate a blog when the AI service is unavailable or returns an invalid response. For usability, I included a CSV upload interface where users can preview automatically detected columns and adjust them before generating a blog.
+
+Finally, I used Nuxt's server-side rendering and SEO features to make the generated pages accessible to search engines, with relevant metadata, structured data and a ranking table.
+
+If I continued developing the project, I would focus on improving column-detection confidence, handling more unusual CSV formats and expanding the automated tests.
 
 ---
 
 ## Limitations
 
-- **Gemini free-tier rate limits** — 15 requests per minute. If you generate many blogs quickly, the fallback template kicks in automatically.
+- **Gemini free-tier rate limits** — 20 requests per day on the free tier. On quota exhaustion the system automatically retries with `gemini-2.5-flash-lite`, then falls back to the deterministic template.
 - **CSV size cap** at 2 MB — sufficient for datasets up to ~10,000 rows. Very large CSVs would need streaming parsing.
 - **Single currency per dataset** — if a CSV mixes `£` and `$` values, the first currency found wins.
-- **Gemini SDK version** — uses `@google/generative-ai` (v0.x). The newer `@google/genai` (v2.x) has a different API surface (`GoogleGenAI` class, different method chain). Migrating is a low-priority refactor once the new SDK stabilises.
+- **Gemini SDK version** — uses `@google/generative-ai` (v0.x). The newer `@google/genai` (v2.x) has a different API surface. Migrating is a low-priority refactor once the new SDK stabilises.
 
 ---
 
@@ -207,45 +225,6 @@ npm run seed:kv
 ### Admin auth
 
 Set `ADMIN_PASSWORD` as a Cloudflare Pages secret. The middleware (`server/middleware/admin-auth.ts`) guards `/admin/upload` and `POST /api/generate` using an HMAC-SHA256 session token (Web Crypto API — runs identically on Workers and Node.js 20+). When `ADMIN_PASSWORD` is unset (local dev), all requests pass through.
-
----
-
-## 5-minute Demo Script
-
-| # | Action | What to say |
-|---|---|---|
-| 1 | Open https://seo-blog-generator-772.pages.dev | "Here's the homepage — server-rendered on Cloudflare's edge, zero cold start." |
-| 2 | Open `/blog/top-100-fintech-companies` | "This was generated from a 100-row CSV. All numbers were computed in code; the AI only wrote the prose." |
-| 3 | View page source → `<title>`, JSON-LD, `<table>` | "The full company table is in the server HTML — search engines can index every row." |
-| 4 | Open `/sitemap.xml` | "Dynamic sitemap lists every generated blog automatically." |
-| 5 | Go to `/admin/upload`, drag-drop a CSV | "Drop any company CSV here. The system detects columns automatically." |
-| 6 | Click Preview — show column mapping table | "You can override any detected role before generating." |
-| 7 | Click Generate (fallback if no API key) | "15–20 seconds on the free Gemini tier. Uses a deterministic fallback if AI fails — the demo never breaks." |
-| 8 | Navigate to new `/blog/<slug>` | "Saved to Cloudflare KV, SSR on next request, cached at edge for 60 seconds." |
-
-**Backup plan (if Gemini is unavailable):** The fallback template in `server/utils/pipeline.ts:buildFallbackCopy()` generates all copy from the pre-computed stats object. Every page in the demo was already seeded with fallback copy, so if the live API call fails mid-demo, the new blog will still appear — just with slightly more templated prose.
-
----
-
-## Pass/Fail Report
-
-| Check | Result | Notes |
-|---|---|---|
-| `npm run build` with `NITRO_PRESET=cloudflare-pages` | **PASS** | 682 kB / 220 kB gzip |
-| `npm run test` (106 tests) | **PASS** | All suites green |
-| `npm run lint` | **PASS** | 0 errors, 0 warnings |
-| `npm run format:check` | **PASS** | 0 Prettier diffs |
-| Cloudflare Pages deploy | **PASS** | https://seo-blog-generator-772.pages.dev |
-| KV namespace created + bound | **PASS** | id: `2c75f156189542c583a9d2d9184fce24` |
-| 5 blogs seeded to production KV | **PASS** | fintech, healthtech, europe-tech, uk-startups, uk-tech-startups |
-| `GET /blog/top-100-fintech-companies` | **PASS** | HTTP 200, `x-powered-by: Nuxt`, 28 kB SSR HTML |
-| `GET /api/blogs` | **PASS** | HTTP 200, JSON array |
-| `GET /sitemap.xml` | **PASS** | HTTP 200, 504 B |
-| Cache-control headers on `/blog/**` | **PASS** | `public, max-age=60, stale-while-revalidate=3600` |
-| `/admin/upload` renders | **PASS** | HTTP 200, `noindex` meta tag |
-| `POST /api/generate` auth guard | **PASS** | Returns 401 when `ADMIN_PASSWORD` is set |
-| Gzip compression at edge | **PASS** | Cloudflare CDN compresses all SSR responses |
-| PapaParse removed (Workers compat) | **PASS** | Replaced with inline RFC-4180 parser |
 
 ---
 
