@@ -16,6 +16,9 @@
  *   8.  Non-CSV file renamed to .csv → graceful error, no crash
  *   9.  Company names containing commas, quotes, and accented characters
  *   10. Missing API key → fallback template, page still generated
+ *   11. Unsorted CSV with no rank column → rows sorted, Rank injected
+ *   12. Plain numeric metric with currency in header → currency detected
+ *   13. "Latest Round" column → detected as stage role
  */
 
 import { describe, it, expect } from 'vitest'
@@ -23,6 +26,7 @@ import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { runPipeline, PipelineError } from '../server/utils/pipeline'
+import { formatMoney } from '../server/utils/analyseDataset'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const TEST_DIR = resolve(__dirname, '..', 'data', 'test-cases')
@@ -347,5 +351,127 @@ describe('Case 10 — missing API key uses fallback template', () => {
     const csv = readTestCsv('suffix-amounts.csv')
     const entry = await runPipeline({ csvText: csv, industryName: 'UK Tech' }, { geminiApiKey: '' })
     expect(entry.usedFallback).toBe(true)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Case 11: Unsorted CSV with no rank column → rows sorted by metric, Rank injected
+// CSV has 5 rows in random order; Alpha Inc has the highest funding (5 000 000)
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Case 11 — unsorted CSV with no rank column', () => {
+  it('rows[0] is the top-funded company after sort', async () => {
+    const csv = readTestCsv('unsorted-no-rank.csv')
+    const entry = await runPipeline({ csvText: csv, industryName: 'Tech' }, NO_LLM)
+    expect(entry.rows[0][entry.nameHeader]).toBe('Alpha Inc')
+  })
+
+  it('injects a computed Rank column', async () => {
+    const csv = readTestCsv('unsorted-no-rank.csv')
+    const entry = await runPipeline({ csvText: csv, industryName: 'Tech' }, NO_LLM)
+    expect(entry.rankHeader).toBe('Rank')
+  })
+
+  it('Rank values run 1..n in metric-descending order', async () => {
+    const csv = readTestCsv('unsorted-no-rank.csv')
+    const entry = await runPipeline({ csvText: csv, industryName: 'Tech' }, NO_LLM)
+    const ranks = entry.rows.map((r) => r['Rank'])
+    expect(ranks).toEqual(['1', '2', '3', '4', '5'])
+    // Last row (Acme Corp, 500 000) is rank 5
+    expect(entry.rows[4][entry.nameHeader]).toBe('Acme Corp')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Case 12: Plain numeric metric with currency symbol in header → currency detected
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Case 12 — currency inferred from metric header', () => {
+  it('"Funding (EUR)" header → metricCurrency is €', async () => {
+    const csv = readTestCsv('plain-eur.csv')
+    const entry = await runPipeline({ csvText: csv, industryName: 'Tech' }, NO_LLM)
+    expect(entry.stats.metricCurrency).toBe('€')
+  })
+
+  it('"Amount (USD)" header → metricCurrency is $', async () => {
+    const csv = readTestCsv('plain-usd-header.csv')
+    const entry = await runPipeline({ csvText: csv, industryName: 'Tech' }, NO_LLM)
+    expect(entry.stats.metricCurrency).toBe('$')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Case 13: "Latest Round" column header → detected as stage role
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Case 13 — "Latest Round" detected as stage', () => {
+  it('columns["Latest Round"].role is "stage"', async () => {
+    const csv = readTestCsv('latest-round-stage.csv')
+    const entry = await runPipeline({ csvText: csv, industryName: 'Tech' }, NO_LLM)
+    expect(entry.columns['Latest Round'].role).toBe('stage')
+  })
+
+  it('stage breakdown is populated from "Latest Round" values', async () => {
+    const csv = readTestCsv('latest-round-stage.csv')
+    const entry = await runPipeline({ csvText: csv, industryName: 'Tech' }, NO_LLM)
+    expect(entry.stats.stageBreakdown.length).toBeGreaterThan(0)
+    const stages = entry.stats.stageBreakdown.map((s) => s.stage)
+    expect(stages).toContain('Series A')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Case 14: Constant "Latest Round" column → produces stage wording in copy
+// Uses latest-round-const.csv where all 5 rows have "Latest Round: Seed"
+// so the column becomes a datasetTrait and stageValue() should return "seed".
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Case 14 — constant "Latest Round" stage trait in copy', () => {
+  it('datasetTraits contains "Latest Round: Seed"', async () => {
+    const csv = readTestCsv('latest-round-const.csv')
+    const entry = await runPipeline({ csvText: csv, industryName: 'Tech' }, NO_LLM)
+    const traitNames = entry.stats.datasetTraits
+    expect(
+      traitNames.some((t) => /latest.round/i.test(t) && t.toLowerCase().includes('seed')),
+    ).toBe(true)
+  })
+
+  it('fallback copy title includes row count (not a stage-specific integer)', async () => {
+    const csv = readTestCsv('latest-round-const.csv')
+    const entry = await runPipeline({ csvText: csv, industryName: 'Tech' }, NO_LLM)
+    expect(entry.copy.title).toContain('5')
+  })
+
+  it('fallback copy metaDescription contains "seed" stage qualifier', async () => {
+    const csv = readTestCsv('latest-round-const.csv')
+    const entry = await runPipeline({ csvText: csv, industryName: 'Tech' }, NO_LLM)
+    // stageQualifier should inject "at seed stage" or "seed-stage"
+    const allCopy = [
+      entry.copy.metaDescription,
+      ...entry.copy.intro,
+      ...entry.copy.sections.map((s) => s.body),
+    ].join(' ')
+    expect(allCopy.toLowerCase()).toMatch(/seed/)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Case 15: Plain-integer metric values stored in rows; formatMoney formats them
+// EdTech CSV has values like "14200000" (no currency symbol in cell).
+// Confirms pipeline stores the raw cell value and formatMoney produces the
+// display form used by the metric cell branch in the blog table.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Case 15 — plain integer metric cells + formatMoney display', () => {
+  it('pipeline stores the raw plain integer in rows (no currency prefix added)', async () => {
+    const csv = readTestCsv('edtech_europe_eur.csv')
+    const entry = await runPipeline({ csvText: csv, industryName: 'EdTech' }, NO_LLM)
+    const metricHeader = entry.metricHeader!
+    // The top row (highest metric) should have a plain integer as the raw cell value
+    const topMetricRaw = entry.rows[0][metricHeader]
+    expect(topMetricRaw).toMatch(/^\d+$/) // pure digits — no currency symbol
+  })
+
+  it('formatMoney(14200000, "€") returns "€14,200,000" (thousands-separated, full precision)', () => {
+    expect(formatMoney(14_200_000, '€')).toBe('€14,200,000')
+  })
+
+  it('formatMoney(9800000, "€") returns "€9,800,000"', () => {
+    expect(formatMoney(9_800_000, '€')).toBe('€9,800,000')
   })
 })

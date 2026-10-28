@@ -1,0 +1,21 @@
+Position,Organisation,HQ City,Total Funding,Latest Round,Staff,Focus Areas,Summary,URL
+1,SolarLoop,Bristol,£18.4m,Series A,25-49,Solar; Energy storage,SolarLoop builds modular rooftop solar kits with integrated home batteries.,https://solarloop.example.com
+2,TidalForge,Edinburgh,£15.2m,Series A,50-99,Marine energy; Engineering,TidalForge designs low-cost turbines for tidal stream power.,https://tidalforge.example.com
+3,CarbonCrate,London,£12.9m,Seed,10-24,Carbon capture; Construction,CarbonCrate makes building blocks that lock away captured CO2.,https://carboncrate.example.com
+4,GridMind,Manchester,£11m,Series A,25-49,Energy management; AI,GridMind uses forecasting software to balance local energy grids.,https://gridmind.example.com
+5,HeatHive,Leeds,£9.75m,Seed,10-24,Heat pumps; Home energy,HeatHive installs and finances heat pumps for older homes.,https://heathive.example.com
+6,ReCircuit,Birmingham,£8.1m,Seed,10-24,Recycling; Electronics,ReCircuit recovers rare metals from discarded electronics.,https://recircuit.example.com
+7,AgriVolt,Norwich,£7.6m,Seed,5-9,Solar; Agriculture,AgriVolt mounts solar panels above crops to share land use.,https://agrivolt.example.com
+8,BlueKelp,Plymouth,£6.95m,Seed,5-9,Bioplastics; Marine,BlueKelp turns farmed seaweed into compostable packaging.,https://bluekelp.example.com
+9,WindLedger,Glasgow,£6.2m,Seed,10-24,Wind energy; Data provision and analysis,WindLedger tracks turbine performance for small wind farm owners.,https://windledger.example.com
+10,ChargeNest,London,£5.8m,Seed,10-24,EV charging; Property,ChargeNest fits shared EV chargers in apartment car parks.,https://chargenest.example.com
+11,HydroFuse,Aberdeen,£5.1m,Seed,5-9,Hydrogen; Engineering,HydroFuse develops compact electrolysers for industrial sites.,https://hydrofuse.example.com
+12,LoopWear,London,£4.4m,Seed,5-9,Circular fashion; Recycling,LoopWear runs a take-back and resale scheme for workwear.,https://loopwear.example.com
+13,SoilSense,Cambridge,£3.9m,Seed,<5,Agriculture; Sensors,SoilSense sells soil carbon sensors to farmers.,https://soilsense.example.com
+14,EcoFreight,Liverpool,£3.25m,Seed,10-24,Logistics; EV,EcoFreight operates electric last-mile delivery vans.,https://ecofreight.example.com
+15,CoolCore,Sheffield,£2.8m,Seed,<5,Cooling; Energy efficiency,CoolCore makes low-energy cooling units for server rooms.,https://coolcore.example.com
+16,RainBank,Cardiff,£2.15m,Seed,<5,Water management,RainBank builds smart rainwater storage for commercial buildings.,https://rainbank.example.com
+17,PeatGuard,Belfast,£1.9m,Seed,<5,Nature restoration; Carbon capture,PeatGuard restores damaged peatland and sells verified carbon credits.,https://peatguard.example.com
+18,VoltBoat,Southampton,£850k,Pre-seed,<5,Marine; EV,VoltBoat converts diesel harbour boats to electric power.,https://voltboat.example.com
+19,Thermio,Oxford,£620k,Pre-seed,<5,Heat pumps; Software,Thermio writes control software that cuts heat pump running costs.,https://thermio.example.com
+20,GreenGrout,Newcastle,£450k,Pre-seed,<5,Construction; Recycling,GreenGrout produces low-carbon cement from industrial waste.,https://greengrout.example.com

@@ -1,0 +1,13 @@
+Name,City,Amount Raised (USD),Funding Stage,Sectors,About,Website
+Lexibot,San Francisco,"$22,500,000",Series A,Contract review; Legal,Lexibot reads contracts and flags risky clauses.,https://lexibot.example.com
+VisionLane,Austin,"$8,750,000",Series A,Computer vision; Retail,VisionLane counts shelf stock using in-store cameras.,https://visionlane.example.com
+Cortexa,New York,"$31,000,000",Series A,Healthcare; Diagnostics,Cortexa helps radiologists prioritise urgent scans.,https://cortexa.example.com
+PromptShield,Boston,"$4,300,000",Series A,Security; LLM tools,PromptShield blocks prompt-injection attacks on chatbots.,https://promptshield.example.com
+Datawise,Seattle,,Series A,Analytics; Data management,Datawise answers plain-English questions about company data.,https://datawise.example.com
+VoiceNest,Chicago,"$12,100,000",Series A,Voice; Customer service,VoiceNest runs AI phone agents for small businesses.,https://voicenest.example.com
+Agentry,San Francisco,"$27,400,000",Series A,Automation; Developer tools,Agentry lets teams build multi-step AI agents without code.,https://agentry.example.com
+TutorAI,Denver,"$6,050,000",Series A,Education; Personalisation,TutorAI gives students step-by-step maths help.,https://tutorai.example.com
+FarmSight,Des Moines,"$9,900,000",Series A,Agriculture; Computer vision,FarmSight spots crop disease from drone images.,https://farmsight.example.com
+CodeCraft,New York,"$15,600,000",Series A,Developer tools; Code generation,CodeCraft reviews pull requests and suggests fixes.,https://codecraft.example.com
+Translingo,Miami,"$5,200,000",Series A,Translation; Media,Translingo dubs videos into other languages.,https://translingo.example.com
+RiskRadar,Charlotte,"$18,300,000",Series A,Finance; Fraud detection,RiskRadar detects unusual card payments in real time.,https://riskradar.example.com

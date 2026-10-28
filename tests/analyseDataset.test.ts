@@ -674,8 +674,10 @@ describe('buildFallbackCopy', () => {
     expect(result.insights.length).toBeLessThanOrEqual(6)
   })
 
-  it('slug is URL-safe (lowercase, hyphens only)', () => {
-    expect(result.slug).toMatch(/^[a-z0-9-]+$/)
+  it('deterministic slug formula is URL-safe (lowercase, hyphens only)', () => {
+    // Slug is now generated in pipeline.ts, not by the LLM.
+    // Verify the formula used: slugify(`top-N-Industry-companies`)
+    expect(slugify(`top-${mockStats.count}-Fintech-companies`)).toMatch(/^[a-z0-9-]+$/)
   })
 
   it('includes the industry name in the title', () => {
@@ -749,8 +751,10 @@ describe('buildFallbackCopy — non-seed dataset', () => {
     expect(nonSeedResult.keywords.some((k) => k.toLowerCase().includes('seed'))).toBe(false)
   })
 
-  it('still produces a valid slug', () => {
-    expect(nonSeedResult.slug).toMatch(/^[a-z0-9-]+$/)
+  it('slug formula produces URL-safe result for multi-word industry name', () => {
+    expect(slugify(`top-${nonSeedStats.count}-Enterprise Software-companies`)).toMatch(
+      /^[a-z0-9-]+$/,
+    )
   })
 
   it('still produces a title ≤ 60 characters', () => {
