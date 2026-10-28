@@ -1,18 +1,18 @@
 # seo-blog-generator
 
-A Nuxt 3 system that turns any company-ranking CSV into a server-rendered, SEO-optimised blog page using Google Gemini. Built as a take-home test for Beauhurst.
+Drop in a CSV of ranked companies, get back a fully server-rendered, SEO-ready blog page — copy written by Gemini, numbers computed in code. Built for the Beauhurst take-home test.
 
 ---
 
-## Overview
+## What it does
 
-Upload a CSV → the system detects columns automatically → computes statistics in code → sends the stats to an LLM to write the blog copy → saves the result → renders a fully SSR blog page with structured data, a ranking table, and CSS bar charts.
+Upload a CSV → columns are auto-detected → stats are computed in TypeScript → those stats go into a Gemini prompt → the LLM writes the copy → the result is saved → Nuxt SSR renders a blog page with structured data, a ranking table, and bar charts.
 
-The key design principle: **numbers are computed in code, not by AI**. This prevents hallucination while still letting the LLM write compelling, varied prose.
+The rule I kept throughout: **the AI writes prose, never numbers**. Every figure in the copy comes from `computeStats()`, not from the model. This sidesteps hallucination without sacrificing readable copy.
 
 ---
 
-## How It Works
+## How it fits together
 
 ```mermaid
 flowchart LR
@@ -32,122 +32,122 @@ flowchart LR
 
 ---
 
-## Setup
+## Getting started
 
-### Prerequisites
+### You'll need
 
-- **Node.js 20+** (required for `--env-file` flag in the seed script)
-- A free [Google Gemini API key](https://aistudio.google.com/apikey) — the system works without one using the fallback template
+- **Node.js 20+** — the seed script uses `--env-file`, which landed in Node 20
+- A [Google Gemini API key](https://aistudio.google.com/apikey) (free tier is fine) — if you skip this, the app falls back to a deterministic template and still works
 
-### Installation
+### Install and run
 
 ```bash
-# 1. Clone / navigate to the project
+# clone and install
 cd seo-blog-generator
-
-# 2. Install dependencies
 npm install
 
-# 3. Set up environment variables
+# copy the env file and drop in your key
 cp .env.example .env
-# Edit .env and add your GEMINI_API_KEY
+# open .env and set GEMINI_API_KEY
 
-# 4. Seed initial blogs (fintech + healthtech samples)
+# generate the sample blogs (fintech + healthtech)
 npm run seed
 
-# 5. Start the dev server
+# start the dev server
 npm run dev
-# → open http://localhost:3000
+# → http://localhost:3000
 ```
 
 ### Environment variables
 
-| Variable | Required | Default | Purpose |
+| Variable | Required | Default | What it does |
 |---|---|---|---|
-| `GEMINI_API_KEY` | Recommended | — | Google Gemini free-tier key |
+| `GEMINI_API_KEY` | Recommended | — | Gemini free-tier key |
 | `LLM_PROVIDER` | No | `gemini` | `gemini` or `ollama` |
-| `OLLAMA_URL` | No | `http://localhost:11434` | Ollama server (if using local LLM) |
-| `NUXT_PUBLIC_SITE_URL` | No | `http://localhost:3000` | Used for canonical URLs and JSON-LD |
-| `ADMIN_PASSWORD` | No | — | Protects `/admin/upload` and `POST /api/generate`. When unset (local dev), no auth is required. |
+| `OLLAMA_URL` | No | `http://localhost:11434` | Point this at your local Ollama instance |
+| `NUXT_PUBLIC_SITE_URL` | No | `http://localhost:3000` | Baked into canonical URLs and JSON-LD |
+| `ADMIN_PASSWORD` | No | — | Locks down `/admin/upload` and `POST /api/generate`. Leave it unset in local dev and the middleware lets everything through. |
 
 ---
 
-## How to Generate a New Blog
+## Generating a blog
 
-### Via the upload UI
+### Through the UI
 
-1. Start the dev server: `npm run dev`
-2. Go to [http://localhost:3000/admin/upload](http://localhost:3000/admin/upload)
-3. Drag and drop any company-ranking CSV (up to 2 MB)
-4. Enter an industry name (optional — inferred from filename if blank)
-5. Click **Preview columns** to see what was auto-detected; adjust any roles with the dropdowns
-6. Click **Generate blog** — takes 10–20 seconds on the free Gemini tier
+1. `npm run dev`
+2. Open [http://localhost:3000/admin/upload](http://localhost:3000/admin/upload)
+3. Drag in any company-ranking CSV (up to 2 MB)
+4. Optionally type an industry name — if you leave it blank it's inferred from the filename
+5. Hit **Preview columns** to check what was auto-detected; fix any wrong roles with the dropdowns
+6. Hit **Generate blog** — on the free Gemini tier expect 10–20 seconds
 
-### Via the API directly
+### Through the API
 
 ```bash
 curl -X POST http://localhost:3000/api/generate \
   -F "file=@./data/fintech_companies_seed.csv" \
   -F "industry=Fintech"
-# → { "slug": "top-100-fintech-companies", "url": "/blog/top-100-fintech-companies" }
+# returns: { "slug": "top-100-fintech-companies", "url": "/blog/top-100-fintech-companies" }
 ```
 
-### Requirements for the CSV
+### What the CSV needs
 
-- At least one column that looks like a company name (`Company`, `Name`, `Organisation`, etc.)
-- At least one numeric or money column (`Total Raised`, `Funding (USD)`, `Revenue`, etc.)
-- Any column separator pattern; multi-value tags should use `;` as the delimiter
+- At least one column that reads like a company name (`Company`, `Name`, `Organisation`, …)
+- At least one numeric or money column (`Total Raised`, `Funding (USD)`, `Revenue`, …)
+- Multi-value tag columns (sectors, industries) should delimit values with `;`
 
 ---
 
-## Run Tests
+## Tests
 
 ```bash
-npm test          # run the full Vitest suite (144 tests)
-npm run lint      # ESLint
+npm test              # Vitest suite — 144 tests
+npm run lint          # ESLint
 npm run format:check  # Prettier dry-run
 ```
 
 ---
 
-## Tools Used and Why
+## Tech choices
 
-| Tool | Why |
+| Tool | Why I picked it |
 |---|---|
-| **Nuxt 3** | SSR out of the box; Nitro server handles uploads + storage; file-based routing |
-| **Tailwind CSS** | Utility-first; rapid prototyping without bloating the CSS bundle |
-| **Inline RFC-4180 parser** | ~80-line zero-dependency CSV parser; handles quoted fields, BOM, CRLF/LF/CR. Replaces PapaParse which caused a Rollup parse error in the Cloudflare Workers build. |
-| **Google Gemini (gemini-2.5-flash)** | Free tier; fast; supports `responseMimeType: 'application/json'` which reduces malformed output. Falls back to `gemini-3.5-flash-lite` on quota errors (HTTP 429). |
-| **Zod** | Runtime schema validation of LLM output; catches the inevitable occasional garbage response |
-| **Nitro storage** | `fs` driver locally; `cloudflare-kv-binding` driver in production. Split via build-time `isCloudflare` flag in `nuxt.config.ts`. |
-| **@nuxtjs/sitemap** | Auto-generates `/sitemap.xml` from a dynamic URL source |
-| **Vitest** | Fast unit test runner; runs pure TS files directly without Nuxt context |
-| **tsx** | Runs the seed script as TypeScript without a separate compile step |
-| **Claude Code** | AI coding assistant (Anthropic) used for iterative development and test writing |
+| **Nuxt 3** | SSR with zero config, Nitro handles the server routes and storage, file-based routing keeps things tidy |
+| **Tailwind CSS** | Fast to iterate with, doesn't grow the CSS bundle unnecessarily |
+| **Inline RFC-4180 CSV parser** | ~80 lines, no dependencies, handles quoted fields, BOM, and all three line-ending styles. PapaParse was my first choice but it threw a Rollup parse error inside the Cloudflare Workers build |
+| **Google Gemini (`gemini-2.5-flash`)** | Free, fast, and supports `responseMimeType: 'application/json'` which cuts down on malformed output significantly. Falls back to `gemini-3.5-flash-lite` on HTTP 429 |
+| **Zod** | Validates the LLM response against a strict schema before anything gets saved — necessary because models occasionally return garbage |
+| **Nitro storage** | `fs` driver in dev, `cloudflare-kv-binding` in production. Switched at build time via the `isCloudflare` flag in `nuxt.config.ts` |
+| **@nuxtjs/sitemap** | Generates `/sitemap.xml` from a dynamic URL list — no manual maintenance |
+| **Vitest** | Runs TypeScript test files directly without needing the full Nuxt context |
+| **tsx** | Lets the seed script run as TypeScript without a separate compile step |
+| **Claude Code** | Used throughout for iterative development and writing tests |
 
 ---
 
-## SEO Decisions
+## SEO
 
-- **Single `<h1>` per page**, logical `h2`/`h3` hierarchy
-- **`lang="en-GB"`** set globally in `nuxt.config.ts → app.head.htmlAttrs`
-- **Canonical links** via `useHead` to prevent duplicate-content penalties
-- **Three JSON-LD schemas**: `Article`, `ItemList` (eligible for rich-result carousel), `FAQPage` (eligible for FAQ accordions in SERPs)
-- **Full table in server HTML** — search engines can index every ranked company without executing JavaScript
-- **`rel="noopener nofollow"`** on external company links — passes no PageRank to third-party sites
-- **`/admin` pages are `noindex`** — set via `useSeoMeta({ robots: 'noindex, nofollow' })`
-- **Dynamic sitemap** — `@nuxtjs/sitemap` fetches `/api/__sitemap__/urls` which lists every generated blog slug
+- One `<h1>` per page, logical `h2` → `h3` hierarchy underneath
+- `lang="en-GB"` set globally in `nuxt.config.ts`
+- Canonical URLs via `useHead` to avoid duplicate-content issues
+- Three JSON-LD schemas per page: `Article`, `ItemList` (carousel-eligible), `FAQPage` (FAQ accordion-eligible)
+- The full ranking table is in the server HTML — crawlers can index every company without running JS
+- External company links use `rel="noopener nofollow"` — no PageRank leaking out
+- `/admin` routes are `noindex, nofollow`
+- Sitemap is built dynamically from the list of stored blog slugs
 
 ---
 
-## How AI Accuracy Is Maintained
+## Keeping the AI honest
 
-1. **Numbers computed in code** — `computeStats()` in `analyseDataset.ts` calculates every figure. The LLM never sees raw data, only the pre-computed results.
-2. **Explicit instruction in prompt** — "Use ONLY the numbers provided. Do NOT invent, round, or approximate any figures."
-3. **Zod schema validation** — the LLM response is parsed and validated against a strict schema. If it fails, a single retry is attempted.
-4. **Post-validation number guard** — after Zod passes, every integer in the title, h1, and meta description is checked against `stats.count`. If the AI hallucinated "Top 10" for a 100-row dataset, those fields are replaced with the deterministic fallback values.
-5. **Deterministic fallback** — if the LLM fails (invalid JSON, rate limit, missing API key), `buildFallbackCopy()` generates template-based copy entirely from the `stats` object. The demo never breaks.
-6. **Quota resilience** — on HTTP 429 from `gemini-2.5-flash`, the system retries automatically with `gemini-3.5-flash-lite` before falling back to the template.
+This was the part I thought about most. Six layers:
+
+1. **Compute first, prompt second** — `computeStats()` calculates everything. The model only ever sees pre-computed numbers, never the raw CSV.
+2. **Hard instruction in the prompt** — "Use ONLY the numbers provided. Do NOT invent, round, or approximate any figures."
+3. **Zod validation** — every response is validated against a typed schema. One retry is attempted on failure.
+4. **Post-validation number guard** — after Zod passes, every small integer in the title, `h1`, and meta description is checked against `stats.count`. If the model wrote "Top 10" for a 100-row dataset, that field gets replaced with the deterministic fallback.
+5. **Deterministic fallback** — `buildFallbackCopy()` generates copy entirely from the stats object. If Gemini is down, rate-limited, or returns bad JSON, the page still generates cleanly.
+6. **Quota fallback model** — on HTTP 429 from `gemini-2.5-flash`, the system automatically retries with `gemini-3.5-flash-lite` before giving up and using the template.
 
 ---
 
@@ -167,71 +167,69 @@ If I continued developing the project, I would focus on improving column-detecti
 
 ---
 
-## Limitations
+## Known limitations
 
-- **Gemini free-tier rate limits** — 20 requests per day on the free tier. On quota exhaustion the system automatically retries with `gemini-3.5-flash-lite`, then falls back to the deterministic template.
-- **CSV size cap** at 2 MB — sufficient for datasets up to ~10,000 rows. Very large CSVs would need streaming parsing.
-- **Single currency per dataset** — if a CSV mixes `£` and `$` values, the first currency found wins.
-- **Gemini SDK version** — uses `@google/generative-ai` (v0.x). The newer `@google/genai` (v2.x) has a different API surface. Migrating is a low-priority refactor once the new SDK stabilises.
+- **Gemini free-tier cap** — 20 requests per day. The quota fallback and deterministic template mean the app doesn't break when this is hit, but you'll get template copy instead of AI copy.
+- **2 MB CSV limit** — fine for datasets up to roughly 10,000 rows. Anything bigger would need streaming parsing.
+- **One currency per dataset** — if a CSV mixes `£` and `$` values, the first symbol found is used for the whole dataset.
+- **Gemini SDK** — still on `@google/generative-ai` (v0.x). The newer `@google/genai` (v2.x) has a different API. Low-priority migration once the new SDK settles.
 
 ---
 
 ## Deployment (Cloudflare Pages)
 
-**Live URL:** https://seo-blog-generator-772.pages.dev
+**Live:** https://seo-blog-generator-772.pages.dev
 
 ### First-time setup
 
 ```bash
-# 1. Authenticate
+# authenticate
 npx wrangler login
 
-# 2. Create KV namespace (only once)
+# create the KV namespace (one-off)
 npx wrangler kv namespace create BLOGS
 npx wrangler kv namespace create BLOGS --preview
-# Paste the returned ids into wrangler.toml
+# paste both returned IDs into wrangler.toml
 
-# 3. Set secrets (never commit these)
-npx wrangler pages secret put GEMINI_API_KEY  --project-name seo-blog-generator
+# set secrets — never put these in the repo
+npx wrangler pages secret put GEMINI_API_KEY --project-name seo-blog-generator
 npx wrangler pages secret put ADMIN_PASSWORD  --project-name seo-blog-generator
 ```
 
 ### Deploy
 
 ```bash
-npm run deploy          # builds + deploys in one step
-# or separately:
-npm run deploy:build    # NITRO_PRESET=cloudflare-pages npm run build
+npm run deploy       # build + deploy in one step
+
+# or step by step:
+npm run deploy:build
 npx wrangler pages deploy dist --project-name seo-blog-generator
 ```
 
-### Seed production KV
+### Seeding production
 
 ```bash
-# 1. Generate local blog data
-npm run seed
-
-# 2. Push to production KV
-npm run seed:kv
+npm run seed      # generate blog JSON locally
+npm run seed:kv   # push it to the production KV namespace
 ```
 
-### How storage works
+### Storage at a glance
 
-| Environment | Driver | Configured by |
+| Environment | Storage driver | Set by |
 |---|---|---|
-| `npm run dev` | `fs` (`.data/blogs/`) | `devStorage` in `nuxt.config.ts` |
+| `npm run dev` | `fs` → `.data/blogs/` | `devStorage` in `nuxt.config.ts` |
 | Cloudflare Pages | `cloudflare-kv-binding` (`BLOGS`) | `storage` when `NITRO_PRESET=cloudflare-pages` |
 
 ### Admin auth
 
-Set `ADMIN_PASSWORD` as a Cloudflare Pages secret. The middleware (`server/middleware/admin-auth.ts`) guards `/admin/upload` and `POST /api/generate` using an HMAC-SHA256 session token (Web Crypto API — runs identically on Workers and Node.js 20+). When `ADMIN_PASSWORD` is unset (local dev), all requests pass through.
+Set `ADMIN_PASSWORD` as a Cloudflare Pages secret. The middleware at `server/middleware/admin-auth.ts` validates an HMAC-SHA256 session token (Web Crypto API, works identically on Workers and Node 20+). In local dev with no password set, everything passes through.
 
 ---
 
-## Future Improvements
+## Things I'd add next
 
-- **Scheduled regeneration** — a cron job to refresh AI copy as new CSV uploads arrive
-- **Multiple datasets per industry** — version history for the same industry (quarterly rankings)
-- **Image generation** — use Gemini's image API or DALL-E to generate a hero image per blog
-- **Column-detection confidence scores** — show the user how confident the auto-detection is
-- **Export to Markdown** — let users download the generated content for use in other CMSes
+- **Scheduled regeneration** — cron job to refresh copy when new CSV data comes in
+- **Version history** — keep previous runs for the same industry (useful for quarterly rankings)
+- **Per-blog hero image** — generate something with Gemini's image API or DALL-E
+- **Column-detection confidence** — surface a confidence score in the UI so users know when to override
+- **Markdown export** — let users download the generated copy for use in other tools
