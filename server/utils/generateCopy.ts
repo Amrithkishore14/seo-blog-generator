@@ -17,7 +17,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { z } from 'zod'
 import type { DatasetStats } from './analyseDataset'
-import { formatMoney, slugify } from './analyseDataset'
+import { formatMoney } from './analyseDataset'
 
 // ── String helpers ────────────────────────────────────────────────────────────
 
@@ -43,7 +43,6 @@ function labelForSentence(label: string): string {
 const CopySchema = z.object({
   title: z.string().min(1).max(60), // <title> tag — keep under 60 for SERP
   metaDescription: z.string().min(1).max(155), // <meta description> — keep under 155
-  slug: z.string().regex(/^[a-z0-9-]+$/, 'Slug must be URL-safe'),
   h1: z.string().min(1), // Page heading
   intro: z.array(z.string().min(1)).length(2), // Two intro paragraphs
   sections: z
@@ -103,6 +102,7 @@ export async function generateCopy(
 
   if (hasKey) {
     let lastRaw: string | null = null
+    const fb = buildFallbackCopy(opts)
 
     for (let attempt = 1; attempt <= 2; attempt++) {
       const prompt = buildPrompt(opts, attempt === 2)
@@ -110,7 +110,7 @@ export async function generateCopy(
         const raw = await callLlm(prompt, opts)
         lastRaw = raw
         const copy = parseAndValidate(raw)
-        if (copy) return { copy, usedFallback: false }
+        if (copy) return { copy: sanitiseCopyNumbers(copy, opts.stats, fb), usedFallback: false }
         console.warn(`[generateCopy] Attempt ${attempt}: Zod validation failed`)
       } catch (err) {
         console.warn(`[generateCopy] Attempt ${attempt}: LLM call failed:`, err)
@@ -121,11 +121,10 @@ export async function generateCopy(
     // Both attempts failed. Try salvaging: substitute fallback title/meta into
     // the AI JSON so the body copy is still AI-generated.
     if (lastRaw) {
-      const fb = buildFallbackCopy(opts)
       const salvaged = parseAndValidateSalvage(lastRaw, fb.title, fb.metaDescription)
       if (salvaged) {
         console.warn('[generateCopy] Substituted fallback title/meta; body copy is AI-generated')
-        return { copy: salvaged, usedFallback: false }
+        return { copy: sanitiseCopyNumbers(salvaged, opts.stats, fb), usedFallback: false }
       }
     }
   } else {
@@ -143,17 +142,41 @@ async function callLlm(prompt: string, opts: GenerateCopyOptions): Promise<strin
   return callGemini(prompt, opts.geminiApiKey!)
 }
 
-/** Call Google Gemini REST API via the official SDK. */
+/** Call Google Gemini REST API via the official SDK.
+ *
+ * Retry strategy on quota errors (HTTP 429):
+ *   1. Try gemini-2.5-flash (primary model)
+ *   2. On 429 → retry with gemini-2.5-flash-lite (lighter free-tier model)
+ *   3. On any other error, or if the lite model also fails → throw
+ */
 async function callGemini(prompt: string, apiKey: string): Promise<string> {
-  const genAI = new GoogleGenerativeAI(apiKey)
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
-    generationConfig: {
-      responseMimeType: 'application/json',
-    },
-  })
-  const result = await model.generateContent(prompt)
-  return result.response.text()
+  const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite']
+  let lastErr: unknown
+
+  for (const modelName of modelsToTry) {
+    const genAI = new GoogleGenerativeAI(apiKey)
+    const model = genAI.getGenerativeModel({
+      model: modelName,
+      generationConfig: { responseMimeType: 'application/json' },
+    })
+    try {
+      console.log(`[callGemini] Using model: ${modelName}`)
+      const result = await model.generateContent(prompt)
+      return result.response.text()
+    } catch (err) {
+      lastErr = err
+      const is429 =
+        err instanceof Error &&
+        (err.message.includes('429') || /quota|rate.limit/i.test(err.message))
+      if (is429) {
+        console.warn(`[callGemini] ${modelName} quota exceeded — trying next model`)
+        continue
+      }
+      // Non-quota error: don't retry with a different model
+      throw err
+    }
+  }
+  throw lastErr
 }
 
 /** Call a local Ollama server. */
@@ -224,10 +247,64 @@ function parseAndValidateSalvage(
   return null
 }
 
+// ── Number accuracy guard ─────────────────────────────────────────────────────
+
+/**
+ * After Zod validation, check that every small integer (< 10 000, not a
+ * year) in the title, h1, and metaDescription matches the real row count.
+ * This catches cases where the LLM says "Top 10" for a 100-row dataset.
+ *
+ * If a field contains a wrong integer, the deterministic fallback value is
+ * substituted for that field only; the rest of the AI copy is kept.
+ *
+ * Exported so it can be unit-tested without calling the real Gemini API.
+ */
+export function sanitiseCopyNumbers(
+  copy: GeneratedCopy,
+  stats: DatasetStats,
+  fallback: GeneratedCopy,
+): GeneratedCopy {
+  function hasWrongInteger(text: string): boolean {
+    const matches = [...text.matchAll(/\b(\d{1,5})\b/g)]
+    return matches.some((m) => {
+      const n = parseInt(m[1], 10)
+      if (n >= 1900 && n <= 2099) return false // allow years
+      return n !== stats.count
+    })
+  }
+  return {
+    ...copy,
+    title: hasWrongInteger(copy.title) ? fallback.title : copy.title,
+    h1: hasWrongInteger(copy.h1) ? fallback.h1 : copy.h1,
+    metaDescription: hasWrongInteger(copy.metaDescription)
+      ? fallback.metaDescription
+      : copy.metaDescription,
+  }
+}
+
 // ── Dataset trait helpers ─────────────────────────────────────────────────────
 
+/**
+ * Return true if a trait's column header looks like a stage/round column.
+ * Mirrors the regex used in classifyColumnRole so both stay in sync.
+ */
+function isStageHeader(header: string): boolean {
+  const h = header.trim()
+  return (
+    /^(stage|round|series|phase)$/i.test(h) ||
+    /funding.round|investment.stage|funding stage|latest.round/i.test(h)
+  )
+}
+
+/**
+ * Find the constant stage value from traits, matching any stage-role header
+ * (Stage, Funding Round, Latest Round, etc.) — not just a literal "stage:" prefix.
+ */
 function stageValue(traits: string[]): string {
-  const stageTrait = traits.find((t) => t.toLowerCase().startsWith('stage:'))
+  const stageTrait = traits.find((t) => {
+    const header = t.split(':')[0] ?? ''
+    return isStageHeader(header)
+  })
   if (!stageTrait) return ''
   return stageTrait.split(':')[1]?.trim().toLowerCase() ?? ''
 }
@@ -321,7 +398,6 @@ The JSON must match this exact structure:
 {
   "title": "(max 60 chars — count carefully; include '${industry}' and a number)",
   "metaDescription": "(complete sentence, max 155 chars — count carefully; no ellipsis)",
-  "slug": "(URL-safe slug, e.g. 'top-${slugify(industry)}-companies')",
   "h1": "(page heading — slightly different phrasing from title)",
   "intro": ["paragraph 1 (2-3 sentences)", "paragraph 2 (2-3 sentences)"],
   "sections": [
@@ -386,8 +462,6 @@ export function buildFallbackCopy(opts: GenerateCopyOptions): GeneratedCopy {
     .map((t) => t.tag)
     .join(', ')
 
-  const slug = slugify(`top-${stats.count}-${industry}-companies`)
-
   const stageQ = stageQualifier(stats.datasetTraits)
   const stage = stageLabel(stats.datasetTraits)
 
@@ -410,11 +484,11 @@ export function buildFallbackCopy(opts: GenerateCopyOptions): GeneratedCopy {
 
   return {
     title: `Top ${stats.count} ${industry} Companies by ${stats.metricLabel}`.slice(0, 60),
-    metaDescription: `The top ${stats.count} ${industry} companies ranked by ${metricInSentence}, with a combined ${total}${stageQ}.`.slice(
-      0,
-      155,
-    ),
-    slug,
+    metaDescription:
+      `The top ${stats.count} ${industry} companies ranked by ${metricInSentence}, with a combined ${total}${stageQ}.`.slice(
+        0,
+        155,
+      ),
     h1: `The ${stats.count} Best-Funded ${industry} Companies`,
     intro: [
       `This dataset covers ${stats.count} ${industry} companies${stageQ}, which have collectively raised ${total}. The data spans ${stats.regionBreakdown.length} distinct region${stats.regionBreakdown.length !== 1 ? 's' : ''}.`,
@@ -447,7 +521,9 @@ export function buildFallbackCopy(opts: GenerateCopyOptions): GeneratedCopy {
       `Average: ${avg} · Median: ${median}.`,
       `${stats.topCompany} leads with ${maxRaise}.`,
       ...(stats.topCategories.length > 0
-        ? [`Most common sector: "${stats.topCategories[0].tag}" (${stats.topCategories[0].count} companies).`]
+        ? [
+            `Most common sector: "${stats.topCategories[0].tag}" (${stats.topCategories[0].count} companies).`,
+          ]
         : []),
     ].slice(0, 6),
     faq: [
