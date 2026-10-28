@@ -224,7 +224,7 @@ const tableHeaders = computed(() => {
         <span
           class="inline-block text-xs font-semibold uppercase tracking-wide text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded mb-3"
         >
-          {{ blog.industry }}
+          {{ blog.industry.charAt(0).toUpperCase() + blog.industry.slice(1) }}
         </span>
 
         <!-- One H1 per page — required for good SEO and accessibility -->

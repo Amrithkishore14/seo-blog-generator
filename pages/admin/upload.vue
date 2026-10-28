@@ -47,6 +47,8 @@ const generatedSlug = ref('')
 const progressMessage = ref('')
 /** Error message */
 const errorMessage = ref('')
+/** True when the error was a 401 — session expired */
+const sessionExpired = ref(false)
 
 // All possible roles for the override dropdowns
 const ALL_ROLES: ColumnRole[] = [
@@ -134,6 +136,7 @@ async function previewColumns() {
     ) as Record<string, ColumnRole>
     step.value = 'preview-ready'
   } catch (err: unknown) {
+    sessionExpired.value = isUnauthorised(err)
     errorMessage.value = extractMessage(err)
     step.value = 'error'
   }
@@ -180,6 +183,7 @@ async function generateBlog() {
     step.value = 'done'
   } catch (err: unknown) {
     clearInterval(timer)
+    sessionExpired.value = isUnauthorised(err)
     errorMessage.value = extractMessage(err)
     step.value = 'error'
   }
@@ -193,6 +197,7 @@ function reset() {
   columnOverrides.value = {}
   industryName.value = ''
   errorMessage.value = ''
+  sessionExpired.value = false
   generatedSlug.value = ''
 }
 
@@ -203,6 +208,16 @@ function extractMessage(err: unknown): string {
   }
   if (err instanceof Error) return err.message
   return 'An unexpected error occurred.'
+}
+
+/** Returns true when the error is a 401 Unauthorised response. */
+function isUnauthorised(err: unknown): boolean {
+  return !!(
+    err &&
+    typeof err === 'object' &&
+    'statusCode' in err &&
+    (err as { statusCode: number }).statusCode === 401
+  )
 }
 
 const headers = computed(() => Object.keys(detectedColumns.value))
@@ -229,9 +244,18 @@ const headers = computed(() => Object.keys(detectedColumns.value))
     >
       <span class="text-red-500 text-lg mt-0.5">✕</span>
       <div>
-        <p class="font-medium text-red-800">Something went wrong</p>
-        <p class="text-red-700 text-sm mt-1">{{ errorMessage }}</p>
-        <button class="mt-2 text-sm text-red-600 underline" @click="reset">Try again</button>
+        <template v-if="sessionExpired">
+          <p class="font-medium text-red-800">Your session has expired.</p>
+          <p class="text-red-700 text-sm mt-1">
+            Please
+            <NuxtLink to="/admin/login" class="underline">log in again</NuxtLink>.
+          </p>
+        </template>
+        <template v-else>
+          <p class="font-medium text-red-800">Something went wrong</p>
+          <p class="text-red-700 text-sm mt-1">{{ errorMessage }}</p>
+          <button class="mt-2 text-sm text-red-600 underline" @click="reset">Try again</button>
+        </template>
       </div>
     </div>
 
