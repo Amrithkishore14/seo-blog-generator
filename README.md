@@ -103,7 +103,7 @@ curl -X POST http://localhost:3000/api/generate \
 ## Run Tests
 
 ```bash
-npm test          # run the full Vitest suite (137 tests)
+npm test          # run the full Vitest suite (144 tests)
 npm run lint      # ESLint
 npm run format:check  # Prettier dry-run
 ```
