@@ -191,6 +191,24 @@ function formatCompact(amount: number, currency: string): string {
   return `${currency}${amount.toLocaleString('en-GB')}`
 }
 
+/**
+ * Format a raw metric cell value for display in the table.
+ * - Values already carrying a currency symbol or compact suffix (e.g. "£3.2m")
+ *   are returned as-is.
+ * - Plain integers (e.g. "14200000") are formatted with currency + thousands
+ *   separators: "€14,200,000".
+ * - Blank cells return an em-dash.
+ */
+function formatMetricCell(raw: string, currency: string): string {
+  if (!raw || !raw.trim()) return '—'
+  // Already formatted (has a currency symbol or a compact suffix)
+  if (/[£$€]/.test(raw) || /[kmbn]$/i.test(raw.trim())) return raw
+  // Parse plain number (strip commas / whitespace that might already be there)
+  const n = Number(raw.replace(/[,\s]/g, ''))
+  if (!isFinite(n) || isNaN(n)) return raw
+  return `${currency}${n.toLocaleString('en-GB')}`
+}
+
 // Percentage for CSS bar chart widths (clamped to 0–100)
 function pct(value: number, max: number): number {
   if (max === 0) return 0
@@ -417,7 +435,9 @@ const tableHeaders = computed(() => {
                   >
                     {{ header }}
                     <span aria-hidden="true" class="ml-0.5">
-                      <template v-if="sortCol === header">{{ sortDir === 'asc' ? '↑' : '↓' }}</template>
+                      <template v-if="sortCol === header">{{
+                        sortDir === 'asc' ? '↑' : '↓'
+                      }}</template>
                       <template v-else>↕</template>
                     </span>
                   </button>
@@ -451,6 +471,11 @@ const tableHeaders = computed(() => {
                     <span class="text-gray-500 block max-w-xs truncate" :title="row[header]">
                       {{ row[header] }}
                     </span>
+                  </template>
+
+                  <!-- Metric cell — format plain integers with currency + thousands separator -->
+                  <template v-else-if="blog.metricHeader && header === blog.metricHeader">
+                    {{ formatMetricCell(row[header] ?? '', blog.stats.metricCurrency) }}
                   </template>
 
                   <!-- Default cell -->
